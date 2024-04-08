@@ -19,6 +19,11 @@
 ################################################################################
 
 # 半测回类：一次测量按键
+#
+# 竖直角范围: -90 ~ 90
+#   盘左时： 90 - L (左天顶距：当初准轴水平时为 90度)
+#   盘左时： R - 270
+#
 class halfRoundObs:
     def __init__(self,index_halfRound = "L",refHt = 0.0, Hz = 0.0, Vz = 0.0, SDist = 0.0) -> None:
         self.index_halfRound = index_halfRound
@@ -36,22 +41,28 @@ class halfRoundObs:
             if self.Hz >= 180:           
                 self.HzR2L = self.Hz - 180
             if self.Hz < 180:           
-                self.HzR2L = self.Hz + 180 
+                self.HzR2L = self.Hz + 180               
+  
+            self.VzR2L = 90 - self.Hz
+            self.VzR2L = self.Hz -270
 
-            # To add... 
-            self.VzR2L = 0.0
             pass
 
 # 一个测回类：仅是一个目标点的一个测回观测，但可以包含多次按键测量的数据。
 class RoundObs:
-    def __init__(self,indexRound = "One",halfRoundObsList = []) -> None:
+    def __init__(self,indexRound = "",halfRoundObsList = []) -> None:
         self.indexRound = indexRound
         self.halfRoundObsList = halfRoundObsList 
 
     # 计算左右盘互差，及均值： (盘左 - 盘右)
     def roundCompute(self):
-        leftRoundObs = self.halfRoundObsList[0]
-        rightRoundObs = self.halfRoundObsList[-1]
+        leftRoundObs = halfRoundObs()
+        rightRoundObs = halfRoundObs()     
+        for item in self.halfRoundObsList:
+            if item.index_halfRound == "L":
+                leftRoundObs = item
+            if item.index_halfRound == "R":                
+                rightRoundObs = item
 
         self.difLRHz = leftRoundObs.Hz - rightRoundObs.HzR2L
         self.difLRVz = leftRoundObs.Vz - rightRoundObs.VzR2L
@@ -156,6 +167,7 @@ class StationObs:
                     allInfoOneStation.append(info)
 
                     info = "" 
+
         return allInfoOneStation
 
     # 站点数据格式化输出：带外业限差计算输出
@@ -241,3 +253,4 @@ class RoundMeasureFile:
             for stationObs in stationObsList:
                 infoCheck = stationObs.stationObsCheck([0,0,0])
                 file.write(infoCheck)
+                pass

@@ -18,6 +18,18 @@ class Setup:
         self.stnId = stnId
         self.instHt = instHt
 
+    def parserSetupBlock(self,rawSetupBlock):
+        # setup = Setup()
+        for info in rawSetupBlock:        
+            if info.find("STN_ID") != -1:
+                #print(info)
+                self.stnId = info.split()[1].strip().replace('"',"")
+
+            if info.find("INST_HT") != -1:
+                self.instHt = info.split()[1].strip().replace(";","")
+                # print(stn_id)
+        # return setup   
+
 class SlopeItem:
     def __init__(self,rawTgtId = "", Hz = 0.0, Vz = 0.0, SDist = 0.0, RefHt = 0.0, flags = "",date = "",appType = "") -> None:
         self.rawTgtId = rawTgtId
@@ -35,7 +47,7 @@ class SlopeItem:
     # 从Leica IDX文件中的 TgtID中，判断目标、测回信息
     def parseTgtId(self):
         self.tgtId = self.rawTgtId[-1]
-        self.round = "One"   
+        self.round = self.rawTgtId[0]   
 
     def parseRLFace(self):
         if self.flags == "00000000":
@@ -46,13 +58,56 @@ class SlopeItem:
         # print()
 
 class Slope:
-    def __init__(self,slopItemList = None) -> None:
-        self.slopItemList = slopItemList
+    def __init__(self,slopeItemList = None) -> None:
+        self.slopeItemList = slopeItemList
+
+    def parserSlopeBlock(self,rawSlopeBlock):
+        self.slopeItemList = []
+        for info in rawSlopeBlock:        
+            infoList = info.split(",")
+
+            appType = infoList[9].strip()
+            # 仅解析测量数据，不对设站数据处理
+            if appType == "107" :
+                slopeItem = SlopeItem()
+
+                #  Leica IDX 中现有的字段
+                slopeItem.rawTgtId = infoList[1].strip().replace('"',"")        
+                slopeItem.Hz = infoList[3].strip()
+                slopeItem.Vz = infoList[4].strip()
+                slopeItem.SDist = infoList[5].strip()
+                slopeItem.RefHt = infoList[6].strip()
+                slopeItem.date = infoList[7].strip()
+                slopeItem.appType = infoList[9].strip()
+                # 半测回标记：0：左半测回；1：右半测回
+                slopeItem.flags = infoList[10].strip().replace(';',"")
+
+                # 获取真实的tgtId,round
+                slopeItem.parseTgtId() 
+                slopeItem.parseRLFace()
+                
+                self.slopeItemList.append(slopeItem)
+
+        # return slopeItemList
 
 class StationBlock:
     def __init__(self,setUp = None, slope = None) -> None:
         self.setUp = setUp
         self.slope = slope
+
+    # def parserStationBlock(self,rawSetupBlock):
+    #     # setUpBlock = stationBlock["setUp"]
+    #     # slopBlock = stationBlock["slop"]
+
+    #     setUp = Setup()
+    #     setUp.parserSetupBlock(rawSetupBlock)
+
+    #     slop = Slope()
+    #     slop.parserSlopeBlock(rawSetupBlock)
+
+    #     stationBlock = StationBlock(setUp,slop)
+
+    #     return stationBlock
 
 class LeicaIDX:
     def __init__(self,fileDir) -> None:
@@ -114,53 +169,56 @@ class LeicaIDX:
             self.allStationBlock.append(stationBlock)
             print()
  
-    def parserSetupBlock(self,rawSetupBlock):
-        setup = Setup()
-        for info in rawSetupBlock:        
-            if info.find("STN_ID") != -1:
-                #print(info)
-                setup.stnId = info.split()[1].strip().replace('"',"")
+    # def parserSetupBlock(self,rawSetupBlock):
+    #     setup = Setup()
+    #     for info in rawSetupBlock:        
+    #         if info.find("STN_ID") != -1:
+    #             #print(info)
+    #             setup.stnId = info.split()[1].strip().replace('"',"")
 
-            if info.find("INST_HT") != -1:
-                setup.instHt = info.split()[1].strip().replace(";","")
-                # print(stn_id)
-        return setup   
+    #         if info.find("INST_HT") != -1:
+    #             setup.instHt = info.split()[1].strip().replace(";","")
+    #             # print(stn_id)
+    #     return setup   
 
-    def parserSlopeBlock(self,rawSlopeBlock):
-        slopeItemList = []
-        for info in rawSlopeBlock:        
-            infoList = info.split(",")
+    # def parserSlopeBlock(self,rawSlopeBlock):
+    #     slopeItemList = []
+    #     for info in rawSlopeBlock:        
+    #         infoList = info.split(",")
 
-            appType = infoList[9].strip()
-            # 仅解析测量数据，不对设站数据处理
-            if appType == "107" :
-                slopeItem = SlopeItem()
+    #         appType = infoList[9].strip()
+    #         # 仅解析测量数据，不对设站数据处理
+    #         if appType == "107" :
+    #             slopeItem = SlopeItem()
 
-                #  Leica IDX 中现有的字段
-                slopeItem.rawTgtId = infoList[1].strip().replace('"',"")        
-                slopeItem.Hz = infoList[3].strip()
-                slopeItem.Vz = infoList[4].strip()
-                slopeItem.SDist = infoList[5].strip()
-                slopeItem.RefHt = infoList[6].strip()
-                slopeItem.date = infoList[7].strip()
-                slopeItem.appType = infoList[9].strip()
-                # 半测回标记：0：左半测回；1：右半测回
-                slopeItem.flags = infoList[10].strip().replace(';',"")
+    #             #  Leica IDX 中现有的字段
+    #             slopeItem.rawTgtId = infoList[1].strip().replace('"',"")        
+    #             slopeItem.Hz = infoList[3].strip()
+    #             slopeItem.Vz = infoList[4].strip()
+    #             slopeItem.SDist = infoList[5].strip()
+    #             slopeItem.RefHt = infoList[6].strip()
+    #             slopeItem.date = infoList[7].strip()
+    #             slopeItem.appType = infoList[9].strip()
+    #             # 半测回标记：0：左半测回；1：右半测回
+    #             slopeItem.flags = infoList[10].strip().replace(';',"")
 
-                # 获取真实的tgtId,round
-                slopeItem.parseTgtId() 
-                slopeItem.parseRLFace()
+    #             # 获取真实的tgtId,round
+    #             slopeItem.parseTgtId() 
+    #             slopeItem.parseRLFace()
                 
-                slopeItemList.append(slopeItem)
+    #             slopeItemList.append(slopeItem)
 
-        return slopeItemList
+    #     return slopeItemList
 
     def parserStationBlock(self,stationBlock):
         setUpBlock = stationBlock["setUp"]
         slopBlock = stationBlock["slop"]
 
-        setUp = self.parserSetupBlock(setUpBlock)
-        slop = self.parserSlopeBlock(slopBlock)
+        setUp = Setup()
+        setUp.parserSetupBlock(setUpBlock)
+
+        slop = Slope()
+        slop.parserSlopeBlock(slopBlock)
 
         stationBlock = StationBlock(setUp,slop)
 
@@ -178,7 +236,7 @@ class LeicaIDX:
         
         # 提取所有的 targetId
         duplicatesTargetIndexList = []
-        for splotItem in stationBlock.slope:
+        for splotItem in stationBlock.slope.slopeItemList:
             duplicatesTargetIndexList.append(splotItem.tgtId)        
         targetIndexList = self.removeDuplicatesList(duplicatesTargetIndexList) 
 
@@ -191,9 +249,9 @@ class LeicaIDX:
         # 提取所有的 roundIndex
         for tgtObs in stationObs.targetObsList:
             duplicatesRoundIndexList = []
-            for sloptItem in stationBlock.slope:
+            for sloptItem in stationBlock.slope.slopeItemList:
                 if tgtObs.indexTarget.find(sloptItem.tgtId) != -1:
-                    duplicatesRoundIndexList.append(splotItem.round)
+                    duplicatesRoundIndexList.append(sloptItem.round)
             roundIndexList =self.removeDuplicatesList(duplicatesRoundIndexList)
 
             for roundIndex in roundIndexList:
@@ -204,7 +262,7 @@ class LeicaIDX:
                 # print()
 
         # 提取半测回数据
-        for slopeItem in stationBlock.slope:
+        for slopeItem in stationBlock.slope.slopeItemList:
             halfRoundObs = rm.halfRoundObs()
             halfRoundObs.index_halfRound = slopeItem.indexHalfRound
             halfRoundObs.Hz = float(slopeItem.Hz)
@@ -215,12 +273,15 @@ class LeicaIDX:
             for tgtObs in stationObs.targetObsList:
                 if tgtObs.indexTarget.find(slopeItem.tgtId) != -1:
                     for roundObs in tgtObs.roundObsList:
+                        # roundObs.indexRound = slopeItem.round
                         if roundObs.indexRound.find(slopeItem.round) != -1:
                             roundObs.halfRoundObsList = [copy.deepcopy(element) for element in roundObs.halfRoundObsList]
                             roundObs.halfRoundObsList.append(halfRoundObs)
         
         stationObs.stationCompute()
+        stationObs.stringFormat_2()
         stationObs.stringFormat_3()
+        
         return stationObs 
         # print("test................")    
    
@@ -235,8 +296,11 @@ class LeicaIDX:
         return [x for x in lst if not (x in seen or seen.add(x))]
 
 ###  test......    ..................
-fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\20240407.IDX"
 # fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\240403.1.IDX"
+fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\20240407_edit.IDX"
+# fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\20240407.IDX"
+
+
 
 # allStationBlcokList = extractAllStationBlock(fileDir)
 # setUpBlock = allStationBlcokList[0]["setUp"]
