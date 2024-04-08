@@ -265,10 +265,14 @@ class LeicaIDX:
         for slopeItem in stationBlock.slope.slopeItemList:
             halfRoundObs = rm.halfRoundObs()
             halfRoundObs.index_halfRound = slopeItem.indexHalfRound
-            halfRoundObs.Hz = float(slopeItem.Hz)
-            halfRoundObs.Vz = float(slopeItem.Vz)
+            halfRoundObs.Hz = float(slopeItem.Hz)    
             halfRoundObs.SDist = float(slopeItem.SDist)
             halfRoundObs.refHt = float(slopeItem.RefHt)
+
+            test = float(slopeItem.Vz)
+            t2 = halfRoundObs.azimuth2Vertical(test)
+            # halfRoundObs.Vz = halfRoundObs.azimuth2Vertical(float(slopeItem.Vz))
+
 
             for tgtObs in stationObs.targetObsList:
                 if tgtObs.indexTarget.find(slopeItem.tgtId) != -1:
@@ -296,8 +300,9 @@ class LeicaIDX:
         return [x for x in lst if not (x in seen or seen.add(x))]
 
 ###  test......    ..................
+fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\20240407_edit_0408.IDX"
+# fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\20240407_edit.IDX"
 # fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\240403.1.IDX"
-fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\20240407_edit.IDX"
 # fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\20240407.IDX"
 
 

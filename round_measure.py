@@ -21,9 +21,6 @@
 # 半测回类：一次测量按键
 #
 # 竖直角范围: -90 ~ 90
-#   盘左时： 90 - L (左天顶距：当初准轴水平时为 90度)
-#   盘左时： R - 270
-#
 class halfRoundObs:
     def __init__(self,index_halfRound = "L",refHt = 0.0, Hz = 0.0, Vz = 0.0, SDist = 0.0) -> None:
         self.index_halfRound = index_halfRound
@@ -34,7 +31,7 @@ class halfRoundObs:
 
         # 盘右转为盘左后的值
         self.HzR2L = ""
-        self.VzR2L = ""
+        # self.VzR2L = ""
 
     def rightFace2LeftFace(self):
         if self.index_halfRound == "R":
@@ -43,10 +40,19 @@ class halfRoundObs:
             if self.Hz < 180:           
                 self.HzR2L = self.Hz + 180               
   
-            self.VzR2L = 90 - self.Hz
-            self.VzR2L = self.Hz -270
+            # self.VzR2L = 90 - self.Hz
+            # self.VzR2L = self.Hz -270
+    
+    # 将 天顶距 转化为 竖直角
+    #   盘左时： 90 - L (左天顶距：当初准轴水平时为 90度)
+#   #   盘左时： R - 270
+    def azimuth2Vertical(self,azimuth):
+        if self.index_halfRound == "L":
+            self.Vz = 90 - azimuth
+            print()
 
-            pass
+        if self.index_halfRound == "R":
+            self.Vz = azimuth -270
 
 # 一个测回类：仅是一个目标点的一个测回观测，但可以包含多次按键测量的数据。
 class RoundObs:
@@ -54,23 +60,27 @@ class RoundObs:
         self.indexRound = indexRound
         self.halfRoundObsList = halfRoundObsList 
 
-    # 计算左右盘互差，及均值： (盘左 - 盘右)
+    # 计算 ：
+    #   1）左右盘互差，(盘左 - 盘右)
+    #   2）一测回内均值
+    # 
+    #   3）与多测回均值差
     def roundCompute(self):
         leftRoundObs = halfRoundObs()
         rightRoundObs = halfRoundObs()     
         for item in self.halfRoundObsList:
             if item.index_halfRound == "L":
-                leftRoundObs = item
+                leftRoundObs = item                
             if item.index_halfRound == "R":                
                 rightRoundObs = item
 
         self.difLRHz = leftRoundObs.Hz - rightRoundObs.HzR2L
-        self.difLRVz = leftRoundObs.Vz - rightRoundObs.VzR2L
+        self.difLRVz = leftRoundObs.Vz - rightRoundObs.Vz
         self.difLRSDist = leftRoundObs.SDist - rightRoundObs.SDist
 
         self.averageLRHz = (leftRoundObs.Hz + rightRoundObs.HzR2L) / 2.0
-        self.averageLRVz = (leftRoundObs.Vz + rightRoundObs.VzR2L) / 2.0
-        self.averageLRSDist = (leftRoundObs.SDist + rightRoundObs.SDist) / 2.0    
+        self.averageLRVz = (leftRoundObs.Vz + rightRoundObs.Vz) / 2.0
+        self.averageLRSDist = (leftRoundObs.SDist + rightRoundObs.SDist) / 2.0
 
 # 一个观测点类（包括多个测回）
 class TargetObs:
@@ -199,7 +209,8 @@ class StationObs:
                         infoRoundComputer = (str(roundObs.difLRHz) + "," + str(roundObs.difLRVz) + "," + str(roundObs.difLRSDist) + ",," + 
                                              str(roundObs.averageLRHz) + "," + str(roundObs.averageLRVz) + "," + str(roundObs.averageLRSDist)) 
                         # To add...
-                        # infoMutiRoundDif
+                        infoMutiRoundDif = (str(roundObs.difLRHz) + "," + str(roundObs.difLRVz) + "," + str(roundObs.difLRSDist))
+
                     else:                        
                         infoStation = ""
                         infoTarget = "" 
@@ -212,7 +223,7 @@ class StationObs:
                         halfRoundObs.index_halfRound + "," +  \
                         str(halfRoundObs.Hz) + "," + str(halfRoundObs.Vz) + "," + str(halfRoundObs.SDist) + "," + \
                         str(halfRoundObs.refHt) + "," + str(self.stationHt) + ",," + \
-                        str(halfRoundObs.HzR2L) + "," + str(halfRoundObs.VzR2L) + ",," + \
+                        str(halfRoundObs.HzR2L) + "," + str(halfRoundObs.Vz) + ",," + \
                         infoRoundComputer + ",," + \
                         infoAverageMutiRound + ",," + "\n"  
                                       
@@ -233,7 +244,9 @@ class RoundMeasureFile:
             stringCapital = ("测站点,观测方向,测回数,半测回标志,水平方向,垂直方向,距离,棱镜高,测站高,," +
                              "转换到盘左的Hz,转换到盘左的Vz,," + 
                              "水平角2C差,垂直角指标差,距离差（测回内）,," + 
-                             "水平方向平均值,垂直方向平均值,距离平均值（测回内）,," + "\n")
+                             "水平方向平均值,垂直方向平均值,距离平均值（一测回）,," + 
+                             "水平方向平均值,垂直方向平均值,距离平均值（多测回）,," + 
+                             "水平角差,垂直角差,距离差（与多测回平均值的差）" + "\n")
                         
             file.write(stringCapital)
 
