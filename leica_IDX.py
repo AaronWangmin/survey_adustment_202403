@@ -131,24 +131,27 @@ class LeicaIDX:
         for info in rawSlopeBlock:        
             infoList = info.split(",")
 
-            slopeItem = SlopeItem()
+            appType = infoList[9].strip()
+            # 仅解析测量数据，不对设站数据处理
+            if appType == "107" :
+                slopeItem = SlopeItem()
 
-            #  Leica IDX 中现有的字段
-            slopeItem.rawTgtId = infoList[1].strip().replace('"',"")        
-            slopeItem.Hz = infoList[3].strip()
-            slopeItem.Vz = infoList[4].strip()
-            slopeItem.SDist = infoList[5].strip()
-            slopeItem.RefHt = infoList[6].strip()
-            slopeItem.date = infoList[7].strip()
-            slopeItem.appType = infoList[9].strip()
-            # 半测回标记：0：左半测回；1：右半测回
-            slopeItem.flags = infoList[10].strip().replace(';',"")
+                #  Leica IDX 中现有的字段
+                slopeItem.rawTgtId = infoList[1].strip().replace('"',"")        
+                slopeItem.Hz = infoList[3].strip()
+                slopeItem.Vz = infoList[4].strip()
+                slopeItem.SDist = infoList[5].strip()
+                slopeItem.RefHt = infoList[6].strip()
+                slopeItem.date = infoList[7].strip()
+                slopeItem.appType = infoList[9].strip()
+                # 半测回标记：0：左半测回；1：右半测回
+                slopeItem.flags = infoList[10].strip().replace(';',"")
 
-            # 获取真实的tgtId,round
-            slopeItem.parseTgtId() 
-            slopeItem.parseRLFace()
-            
-            slopeItemList.append(slopeItem)
+                # 获取真实的tgtId,round
+                slopeItem.parseTgtId() 
+                slopeItem.parseRLFace()
+                
+                slopeItemList.append(slopeItem)
 
         return slopeItemList
 
@@ -171,7 +174,7 @@ class LeicaIDX:
         stationObs = rm.StationObs()
 
         stationObs.indexStation = stationBlock.setUp.stnId
-        stationObs.stationHt = stationBlock.setUp.instHt  
+        stationObs.stationHt = float(stationBlock.setUp.instHt)  
         
         # 提取所有的 targetId
         duplicatesTargetIndexList = []
@@ -204,10 +207,10 @@ class LeicaIDX:
         for slopeItem in stationBlock.slope:
             halfRoundObs = rm.halfRoundObs()
             halfRoundObs.index_halfRound = slopeItem.indexHalfRound
-            halfRoundObs.Hz = slopeItem.Hz
-            halfRoundObs.Vz = slopeItem.Vz
-            halfRoundObs.SDist = slopeItem.SDist
-            halfRoundObs.refHt = slopeItem.RefHt
+            halfRoundObs.Hz = float(slopeItem.Hz)
+            halfRoundObs.Vz = float(slopeItem.Vz)
+            halfRoundObs.SDist = float(slopeItem.SDist)
+            halfRoundObs.refHt = float(slopeItem.RefHt)
 
             for tgtObs in stationObs.targetObsList:
                 if tgtObs.indexTarget.find(slopeItem.tgtId) != -1:
@@ -216,8 +219,8 @@ class LeicaIDX:
                             roundObs.halfRoundObsList = [copy.deepcopy(element) for element in roundObs.halfRoundObsList]
                             roundObs.halfRoundObsList.append(halfRoundObs)
         
-        stationObs.stringFormat_2()
-        # stationObs.stationCompute()
+        stationObs.stationCompute()
+        stationObs.stringFormat_3()
         return stationObs 
         # print("test................")    
    
@@ -232,7 +235,9 @@ class LeicaIDX:
         return [x for x in lst if not (x in seen or seen.add(x))]
 
 ###  test......    ..................
-fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\240403.1.IDX"
+fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\20240407.IDX"
+# fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\240403.1.IDX"
+
 # allStationBlcokList = extractAllStationBlock(fileDir)
 # setUpBlock = allStationBlcokList[0]["setUp"]
 # slopBlock = allStationBlcokList[0]["slop"]
