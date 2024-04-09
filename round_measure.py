@@ -1,3 +1,7 @@
+import math
+
+import util
+
 ## 标准的全站仪边角网数据记录格式
 #############################################################################
 # 测量项目 - 测站1 - 目标点1 - 第1测回 - 盘左 : 棱镜高、水平方向、垂直方向、斜距、 
@@ -29,33 +33,51 @@ class halfRoundObs:
         self.Vz = Vz
         self.SDist = SDist  # 斜距
 
-        # 盘右转为盘左后的值
-        self.HzR2L = ""
-        # self.VzR2L = ""
+        self.HzR2L = 0.0
 
+        self.test_factor  = 3600
+
+    def halfRoundCompute(self):
+        self.rightFace2LeftFace()
+        self.azimuth2Vertical()
+
+    
+    # 盘右转为盘左后的值
     def rightFace2LeftFace(self):
-        if self.index_halfRound == "R":
-            if self.Hz >= 180:           
-                self.HzR2L = self.Hz - 180
+        if self.index_halfRound == "R":            
+            if self.Hz >=  (180 * self.test_factor):           
+                self.HzR2L = self.Hz - (180 * self.test_factor)
             if self.Hz < 180:           
-                self.HzR2L = self.Hz + 180 
+                self.HzR2L = self.Hz + (180 * self.test_factor)    
     
     # 将 天顶距 转化为 竖直角
     #   盘左时： 90 - L (左天顶距：当初准轴水平时为 90度)
 #   #   盘左时： R - 270
-    def azimuth2Vertical(self,azimuth):
+    def azimuth2Vertical(self):
         if self.index_halfRound == "L":
-            self.Vz = 90 - azimuth
+            self.VzVertical = (90 * self.test_factor) - self.Vz
             print()
 
         if self.index_halfRound == "R":
-            self.Vz = azimuth - 270
+            self.VzVertical = self.Vz - (270 * self.test_factor)
 
 # 一个测回类：仅是一个目标点的一个测回观测，但可以包含多次按键测量的数据。
 class RoundObs:
     def __init__(self,indexRound = "",halfRoundObsList = []) -> None:
         self.indexRound = indexRound
-        self.halfRoundObsList = halfRoundObsList 
+        self.halfRoundObsList = halfRoundObsList
+        
+        self.difLRHz = 0.0
+        self.difLRVz = 0.0
+        self.difLRSDist = 0.0 
+
+        self.averageLRHz = 0.0
+        self.averageLRVz = 0.0
+        self.averageLRSDist = 0.0
+
+        self.difMutiRoundHz = 0.0
+        self.difMutiRoundVz = 0.0
+        self.difMutiRoundSDist = 0.0
 
     # 计算 ：
     #   1）左右盘互差，(盘左 - 盘右)
@@ -66,16 +88,18 @@ class RoundObs:
         rightRoundObs = halfRoundObs()     
         for item in self.halfRoundObsList:
             if item.index_halfRound == "L":
-                leftRoundObs = item                
+                leftRoundObs = item
+                leftRoundObs.halfRoundCompute()               
             if item.index_halfRound == "R":                
                 rightRoundObs = item
+                leftRoundObs.halfRoundCompute()
 
         self.difLRHz = leftRoundObs.Hz - rightRoundObs.HzR2L
-        self.difLRVz = leftRoundObs.Vz - rightRoundObs.Vz
+        self.difLRVz = leftRoundObs.VzVertical - rightRoundObs.VzVertical
         self.difLRSDist = leftRoundObs.SDist - rightRoundObs.SDist
 
         self.averageLRHz = (leftRoundObs.Hz + rightRoundObs.HzR2L) / 2.0
-        self.averageLRVz = (leftRoundObs.Vz + rightRoundObs.Vz) / 2.0
+        self.averageLRVz = (leftRoundObs.VzVertical + rightRoundObs.VzVertical) / 2.0
         self.averageLRSDist = (leftRoundObs.SDist + rightRoundObs.SDist) / 2.0
 
 # 一个观测点类（包括多个测回）
@@ -83,6 +107,10 @@ class TargetObs:
     def __init__(self,indexTarget = "", roundObsList = []) -> None:
         self.indexTarget = indexTarget
         self.roundObsList = roundObsList
+
+        self.averageMutiRoundHz = 0.0
+        self.averageMutiRoundVz = 0.0
+        self.averageMutiRoundSDist = 0.0
 
     # 计算一个观测点的多个测回的均值，及测回差： （测回 - 平均值）
     def multiRoundCompute(self):
@@ -107,7 +135,7 @@ class StationObs:
         for targetObs in self.targetObsList:
             for roundObs in targetObs.roundObsList:
                 for halfRoundObs in roundObs.halfRoundObsList:
-                    halfRoundObs.rightFace2LeftFace()
+                    halfRoundObs.halfRoundCompute()
                     print()
                 roundObs.roundCompute()
             targetObs.multiRoundCompute()    
