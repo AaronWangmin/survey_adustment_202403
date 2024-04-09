@@ -38,10 +38,7 @@ class halfRoundObs:
             if self.Hz >= 180:           
                 self.HzR2L = self.Hz - 180
             if self.Hz < 180:           
-                self.HzR2L = self.Hz + 180               
-  
-            # self.VzR2L = 90 - self.Hz
-            # self.VzR2L = self.Hz -270
+                self.HzR2L = self.Hz + 180 
     
     # 将 天顶距 转化为 竖直角
     #   盘左时： 90 - L (左天顶距：当初准轴水平时为 90度)
@@ -52,7 +49,7 @@ class halfRoundObs:
             print()
 
         if self.index_halfRound == "R":
-            self.Vz = azimuth -270
+            self.Vz = azimuth - 270
 
 # 一个测回类：仅是一个目标点的一个测回观测，但可以包含多次按键测量的数据。
 class RoundObs:
@@ -63,8 +60,7 @@ class RoundObs:
     # 计算 ：
     #   1）左右盘互差，(盘左 - 盘右)
     #   2）一测回内均值
-    # 
-    #   3）与多测回均值差
+    #    
     def roundCompute(self):
         leftRoundObs = halfRoundObs()
         rightRoundObs = halfRoundObs()     
@@ -96,9 +92,9 @@ class TargetObs:
 
         # 测回差
         for roundObs in self.roundObsList:
-            roundObs.difRoundHz = roundObs.averageLRHz - self.averageMutiRoundHz
-            roundObs.difRoundVz = roundObs.averageLRVz - self.averageMutiRoundVz
-            roundObs.difRoundSDist = roundObs.averageLRSDist - self.averageMutiRoundSDist        
+            roundObs.difMutiRoundHz = roundObs.averageLRHz - self.averageMutiRoundHz
+            roundObs.difMutiRoundVz = roundObs.averageLRVz - self.averageMutiRoundVz
+            roundObs.difMutiRoundSDist = roundObs.averageLRSDist - self.averageMutiRoundSDist        
 
 # 一个站点的所有目标点
 class StationObs:
@@ -117,24 +113,28 @@ class StationObs:
             targetObs.multiRoundCompute()    
 
     # 测站数据质检检查：1）测回内超限检查，2）测回间超限检查
-    def stationObsCheck(self,toleranceRound = [0,0,0],toleranceMutiRound = [0,0,0]):
-        # 测回间检查
-        for targetObs in self.targetObsList:
-            # To add...
-            pass
-        
-        
+    def stationObsCheck(self,toleranceRound = [0,0,0],toleranceMutiRound = [0,0,0]):        
         # 测回内检查: station  :  target  :  round
         resultInfoRoundCheck = "" 
         for targetObs in self.targetObsList:
             for roundObs in targetObs.roundObsList:
                 if abs(roundObs.difLRHz) > toleranceRound[0] or \
                     abs(roundObs.difLRVz) > toleranceRound[1] or \
-                    abs(roundObs.difLRSDist) > toleranceRound[2] :
+                    abs(roundObs.difLRSDist) > toleranceRound[2] or \
+                    abs(roundObs.difMutiRoundHz) > toleranceRound[0] or \
+                    abs(roundObs.difMutiRoundVz) > toleranceRound[1] or \
+                    abs(roundObs.difMutiRoundSDist) > toleranceRound[2] :
 
                     resultInfoRoundCheck += (self.indexStation + "," + targetObs.indexTarget + "," + 
-                                             roundObs.indexRound + "," + str(roundObs.difLRHz) + "," + 
-                                             str(roundObs.difLRVz) + "," + str(roundObs.difLRSDist) + "\n") 
+                                             roundObs.indexRound + ",," + str(roundObs.difLRHz) + "," + 
+                                             str(roundObs.difLRVz) + "," + str(roundObs.difLRSDist) + ",," +
+                                             str(roundObs.difMutiRoundHz) + "," + str(roundObs.difMutiRoundVz) + "," +
+                                             str(roundObs.difMutiRoundSDist) + "\n") 
+
+        # 测回间检查
+        for targetObs in self.targetObsList:
+            # To add...
+            pass
 
         return  resultInfoRoundCheck         
 
@@ -209,7 +209,9 @@ class StationObs:
                         infoRoundComputer = (str(roundObs.difLRHz) + "," + str(roundObs.difLRVz) + "," + str(roundObs.difLRSDist) + ",," + 
                                              str(roundObs.averageLRHz) + "," + str(roundObs.averageLRVz) + "," + str(roundObs.averageLRSDist)) 
                         # To add...
-                        infoMutiRoundDif = (str(roundObs.difLRHz) + "," + str(roundObs.difLRVz) + "," + str(roundObs.difLRSDist))
+                        infoMutiRoundDif = (str(roundObs.averageLRHz - targetObs.averageMutiRoundHz) + "," + 
+                                            str(roundObs.averageLRVz -targetObs.averageMutiRoundVz) + "," + 
+                                            str(roundObs.averageLRSDist - targetObs.averageMutiRoundSDist))
 
                     else:                        
                         infoStation = ""
@@ -218,6 +220,7 @@ class StationObs:
 
                         infoRound = ""   
                         infoRoundComputer = ",,,,,," 
+                        infoMutiRoundDif = ",,"
 
                     info = infoStation + "," + infoTarget  + "," + infoRound + "," + \
                         halfRoundObs.index_halfRound + "," +  \
@@ -225,7 +228,8 @@ class StationObs:
                         str(halfRoundObs.refHt) + "," + str(self.stationHt) + ",," + \
                         str(halfRoundObs.HzR2L) + "," + str(halfRoundObs.Vz) + ",," + \
                         infoRoundComputer + ",," + \
-                        infoAverageMutiRound + ",," + "\n"  
+                        infoAverageMutiRound + ",," + \
+                        infoMutiRoundDif + ",," + "\n"  
                                       
                     # print(info)
                     allInfoOneStation.append(info)
@@ -257,8 +261,10 @@ class RoundMeasureFile:
 
             # 增加超限检查         
             resultInfoRoundCheck = (" \n out of range: " + "\n")
-                                # (str(data) + " : " for data in toleranceRound) + "\n")
-            resultInfoRoundCheck += ("station, target, round,diffHz, diffVz, diffSDist  \n")
+                                
+            resultInfoRoundCheck += ("测站, 目标, 测回,," + 
+                                     "水平角差, 垂直角差, 距离差（一测回）,," +
+                                     "水平角差, 垂直角差, 距离差（与多测回平均值差）\n")
             # 输出表头
             file.write(resultInfoRoundCheck)
             
