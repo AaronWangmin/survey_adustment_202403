@@ -262,3 +262,4 @@ leicaIDX.getAllstationObsByTarget()
 
 roundMeasureFile = rm.RoundMeasureFile()
 roundMeasureFile.generateRoundMeasureFile(leicaIDX.allStationObsByTarget,"roundMeasureData.txt")
+roundMeasureFile.generateClearedDataFile(leicaIDX.allStationObsByTarget,"clearedData.txt")

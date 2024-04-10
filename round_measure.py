@@ -48,7 +48,10 @@ class halfRoundObs:
             if self.Hz >=  (180 * self.test_factor):           
                 self.HzR2L = self.Hz - (180 * self.test_factor)
             if self.Hz < 180:           
-                self.HzR2L = self.Hz + (180 * self.test_factor)    
+                self.HzR2L = self.Hz + (180 * self.test_factor) 
+        
+        if self.index_halfRound == "L": 
+            self.HzR2L = self.Hz
     
     # 将 天顶距 转化为 竖直角
     #   盘左时： 90 - L (左天顶距：当初准轴水平时为 90度)
@@ -131,6 +134,8 @@ class StationObs:
         self.stationHt = stationHt
         self.targetObsList = targetObsList
 
+        self.deleteTag = "999999"
+
     def stationCompute(self):
         for targetObs in self.targetObsList:
             for roundObs in targetObs.roundObsList:
@@ -141,7 +146,8 @@ class StationObs:
             targetObs.multiRoundCompute()    
 
     # 测站数据质检检查：1）测回内超限检查，2）测回间超限检查
-    def stationObsCheck(self,toleranceRound = [0,0,0],toleranceMutiRound = [0,0,0]):        
+    #                 [seconds,seconds,meter]
+    def stationObsCheck(self,toleranceRound = [20,20,0.001],toleranceMutiRound = [0,0,0]):        
         # 测回内检查: station  :  target  :  round
         resultInfoRoundCheck = "" 
         for targetObs in self.targetObsList:
@@ -165,6 +171,31 @@ class StationObs:
             pass
 
         return  resultInfoRoundCheck         
+
+    # 超限数据剔除
+    def dataClear(self,toleranceRound = [20,20,0.001]):
+        for targetObs in self.targetObsList:
+            for roundObs in targetObs.roundObsList:
+                # 剔除超限的水平角
+                if abs(roundObs.difLRHz) > toleranceRound[0]:
+                    for halfRoundObs in roundObs.halfRoundObsList:
+                        # halfRoundObs.Hv = self.deleteTag
+                        halfRoundObs.HzR2L = self.deleteTag
+                
+                # 剔除超限的竖直角
+                if abs(roundObs.difLRVz) > toleranceRound[1]:
+                    for halfRoundObs in roundObs.halfRoundObsList:
+                        halfRoundObs.VzVertical = self.deleteTag
+                        # halfRoundObs.HzR2L = self.deleteTag
+                
+                # 剔除超限的距离
+                if abs(roundObs.difLRSDist) > toleranceRound[2]:
+                    for halfRoundObs in roundObs.halfRoundObsList:
+                        halfRoundObs.SDist = self.deleteTag
+                        # halfRoundObs.HzR2L = self.deleteTag
+                
+                        pass                
+       
 
     # 站点数据格式化输出：测站点,观测方向,测回数,半测回标志,水平方向,垂直方向,距离,棱镜高,测站高
     def stringFormat_2(self):
@@ -249,7 +280,7 @@ class StationObs:
                         infoRound = ""   
                         infoRoundComputer = ",,,,,," 
                         infoMutiRoundDif = ",,"
-
+                    
                     info = infoStation + "," + infoTarget  + "," + infoRound + "," + \
                         halfRoundObs.index_halfRound + "," +  \
                         str(halfRoundObs.Hz) + "," + str(halfRoundObs.Vz) + "," + str(halfRoundObs.SDist) + "," + \
@@ -264,7 +295,7 @@ class StationObs:
 
                     info = "" 
         return allInfoOneStation    
-
+   
 # 一个标准的工程记录文件
 class RoundMeasureFile:
     def __init__(self) -> None:
@@ -301,3 +332,34 @@ class RoundMeasureFile:
                 infoCheck = stationObs.stationObsCheck([0,0,0])
                 file.write(infoCheck)
                 pass
+    
+    # 删除了粗差的观测数据
+    def generateClearedDataFile(self,stationObsList,clearedFileDir):
+        with open(clearedFileDir, 'w', encoding='utf-8') as file:
+            stringCapital = ("测站点,观测方向,测回数,半测回标志,方位角,竖直角,距离,测站高,棱镜高,平差站点序号, \n")
+            file.write(stringCapital)
+            
+            for indexStation,stationObs in enumerate(stationObsList):
+                codeStationPreAdjumtment = indexStation
+                stationObs.dataClear()
+                for targetObs in stationObs.targetObsList:
+                    for roundObs in targetObs.roundObsList:                
+                        for halfRoundObs in roundObs.halfRoundObsList:
+                            infoData = (stationObs.indexStation + "," + 
+                                targetObs.indexTarget + "," + 
+                                roundObs.indexRound + "," + 
+                                halfRoundObs.index_halfRound + "," + 
+                                str(halfRoundObs.HzR2L) + "," +
+                                str(halfRoundObs.VzVertical) + "," + 
+                                str(halfRoundObs.SDist) + "," +
+                                str(stationObs.stationHt) + "," +
+                                str(halfRoundObs.refHt) + "," +
+                                str(codeStationPreAdjumtment) + "\n")
+                            file.write(infoData)
+
+
+
+
+
+
+
