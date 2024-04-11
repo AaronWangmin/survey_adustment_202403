@@ -34,8 +34,8 @@ class Setup:
 class SlopeItem:
     def __init__(self,rawTgtId = "", Hz = 0.0, Vz = 0.0, SDist = 0.0, RefHt = 0.0, flags = "",date = "",appType = "") -> None:
         self.rawTgtId = rawTgtId
-        self.Hz = Hz
-        self.Vz = Vz
+        self.Hz = Hz # 默认单位为弧度
+        self.Vz = Vz # 默认单位为弧度
         self.SDist = SDist
         self.RefHt = RefHt
         self.flags = flags
@@ -51,9 +51,16 @@ class SlopeItem:
         appType = infoList[9].strip()
         # 仅解析测量数据，不对设站数据处理
         if appType == "107" :            
-            self.rawTgtId = infoList[1].strip().replace('"',"")        
-            self.Hz = infoList[3].strip()
-            self.Vz = infoList[4].strip()
+            self.rawTgtId = infoList[1].strip().replace('"',"")  
+
+            Hz = util.Angle()
+            Hz.ddmmssString2radians(infoList[3].strip())
+            self.Hz = Hz
+
+            Vz = util.Angle()
+            Vz.ddmmssString2radians(infoList[4].strip())
+            self.Vz = Vz
+
             self.SDist = infoList[5].strip()
             self.RefHt = infoList[6].strip()
             self.date = infoList[7].strip()
@@ -66,7 +73,7 @@ class SlopeItem:
             self.parseRLFace()
 
             # 将角度转化为： 秒
-            self.angle2ss()
+            # self.angle2ss()
             print()
 
     # 从Leica IDX文件中的 TgtID中，判断目标、测回信息
@@ -80,13 +87,13 @@ class SlopeItem:
         if self.flags == "00000001":
             self.indexHalfRound = "R"
 
-    def angle2radians(self):
-        self.Hz = util.ddmmssString2radians(self.Hz)
-        self.Vz = util.ddmmssString2radians(self.Vz)
+    # def angle2radians(self):
+    #     self.Hz = util.ddmmssString2radians(self.Hz)
+    #     self.Vz = util.ddmmssString2radians(self.Vz)
 
-    def angle2ss(self):
-        self.Hz = util.ddmmssString2ss(self.Hz)
-        self.Vz = util.ddmmssString2ss(self.Vz)        
+    # def angle2ss(self):
+    #     self.Hz = util.ddmmssString2ss(self.Hz)
+    #     self.Vz = util.ddmmssString2ss(self.Vz)        
 
 class Slope:
     def __init__(self) -> None:
@@ -156,8 +163,8 @@ class StationBlock:
         for slopeItem in self.slope.slopeItemList:
             halfRoundObs = rm.halfRoundObs()
             halfRoundObs.index_halfRound = slopeItem.indexHalfRound
-            halfRoundObs.Hz = float(slopeItem.Hz)  
-            halfRoundObs.Vz = float(slopeItem.Vz)  
+            halfRoundObs.Hz = slopeItem.Hz
+            halfRoundObs.Vz = slopeItem.Vz 
             halfRoundObs.SDist = float(slopeItem.SDist)
             halfRoundObs.refHt = float(slopeItem.RefHt)
 
@@ -261,5 +268,6 @@ allStationBlock = leicaIDX.parserAllStatioBlock()
 leicaIDX.getAllstationObsByTarget()
 
 roundMeasureFile = rm.RoundMeasureFile()
-roundMeasureFile.generateRoundMeasureFile(leicaIDX.allStationObsByTarget,"roundMeasureData.txt")
-roundMeasureFile.generateClearedDataFile(leicaIDX.allStationObsByTarget,"clearedData.txt")
+roundMeasureFile.generateRawMeasureFile(leicaIDX.allStationObsByTarget,"00_rawData.txt")
+roundMeasureFile.generateRawCheckFile(leicaIDX.allStationObsByTarget,"01_rawCheckData.txt")
+roundMeasureFile.generateClearedDataFile(leicaIDX.allStationObsByTarget,"02_clearedData.txt")

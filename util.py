@@ -1,5 +1,7 @@
 import math
 from decimal import Decimal
+from enum import Enum
+
 
 # 不包含重复元素的新列表，同时保持原始列表的顺序
 def removeDuplicatesList(lst):
@@ -8,72 +10,192 @@ def removeDuplicatesList(lst):
 
 # angle tools
 #
-def dms2degrees(d, m, s):
-    """将度分秒转换为十进制度数"""
 
-    degrees = d + (m / Decimal(str(60.0))) + (s / Decimal(str(3600.0)))
-    return degrees
 
-def degrees2dms(degrees):
-    """将十进制度数转换为度分秒"""
-    seconds = int(degrees * 3600) % 60
-    minutes = int((degrees * 3600) // 60) % 60
-    degrees = int(degrees * 3600) // 3600
-    return degrees, minutes, seconds
+# 定义角度的枚举类型
+class AngleType(Enum):
+    radians = 0
+    degrees = 1
+    seconds = 2
+    dms = 3    
 
-def dms2radians(d, m, s):
-    degrees = dms2degrees(d, m, s)
+class Angle():
+    def __init__(self,value = 999999,angleType = AngleType.radians) -> None:
+        self.value = value
+        self.angleType = angleType
+        pass  
 
-    """将十进制度数转换为弧度"""
-    radians = math.radians(degrees)
-    return radians
+    def dms2degrees(self):
+        if self.angleType == AngleType.dms:       
+            d = self.value[0]
+            m = self.value[1]
+            s = self.value[2]
 
-def radians_to_dms(radians):
-    """将弧度转换为十进制度数"""
-    degrees =math.degrees(radians)
+            degrees = d + (m / 60.0) + (s / 3600.0)
 
-    dms = degrees2dms(degrees)
-    return dms
+            self.value = degrees
+            self.angleType = AngleType.degrees
+            return self
+        else:
+            print(str(self.value) + "  : Error: angle type is not dms")       
 
-def extractDmsFromDdmmssStr(ddmmssStr):
-    """从dd.mmssss字符串中提取dms"""
-    info = ddmmssStr.split(".")
-    dd = Decimal(info[0])
-    mm = Decimal(info[1][0:2])
-    ss = Decimal(info[1][2:4] + "." + info[1][4:])
+    def degrees2dms(self):
+        if self.angleType == AngleType.degrees:
+            degrees = self.value            
 
-    return dd, mm, ss
+            dd = int(degrees)
+            mm = int((degrees - dd) * 60.0) 
+            ss = ((degrees - dd) * 60 - mm) * 60.0
 
-def ddmmssString2radians(ddmmssStr):
-    """将 dd.mmssss字符串转化为 弧度 """
-    dd, mm, ss = extractDmsFromDdmmssStr(ddmmssStr)
+            self.value = (dd, mm, ss)
+            self.angleType = AngleType.dms  
+            return self
+        else:
+            print(str(self.value) + "  : Error: angle type is not degrees")      
 
-    radians = dms2radians(dd,mm,ss)
-    return radians
+    def degrees2radians(self):
+        if self.angleType == AngleType.degrees:            
+            radians = math.radians(self.value)
 
-def ddmmssString2dd(ddmmssStr):
-    """将 dd.mmssss字符串转化为 度 """
-    dd, mm, ss = extractDmsFromDdmmssStr(ddmmssStr)
-
-    degrees = dms2degrees(dd, mm, ss)
+            self.angleType = AngleType.degrees
+            self.value = radians 
+            return self
+        else:
+            print(str(self.value) + "  : Error: angle type is not degrees")   
     
-    return degrees
-
-def ddmmssString2ss(ddmmssStr):
-    """将 dd.mmssss字符串转化为 秒 """
-    dd, mm, ss = extractDmsFromDdmmssStr(ddmmssStr)
-
-    seconds = dd * Decimal(str(3600)) + mm * Decimal(str(60.0)) + ss
-    return seconds
-
+    def dms2seconds(self):
+        if self.angleType == AngleType.dms:
+            self.angleType = AngleType.seconds
+            self.value = self.value[0] * (3600.0) + self.value[1] * (60.0) + self.value[2]  
+            return self           
+        else:            
+            print(str(self.value) + "  : Error: angle type is not seconds") 
 
 
-########## test...........
-ddmmssStr = "12.234290"
-extractDmsFromDdmmssStr(ddmmssStr)
+    def dms2radians(self):
+        if self.angleType == AngleType.dms:
+            self.dms2degrees()
 
-ddmmssString2radians(ddmmssStr)
+            """将十进制度数转换为弧度"""
+            radians = math.radians(self.value)
 
-ddmmssString2dd(ddmmssStr)
+            self.value = radians
+            self.angleType = AngleType.radians 
+            return self       
+        else:
+            print(str(self.value) + "  : Error: angle type is not dms")  
 
-ddmmssString2ss(ddmmssStr)
+    def seconds2radians(self):
+        if self.angleType == AngleType.seconds:  
+            degrees = self.value / (3600.0)
+
+            self.value = degrees
+            self.angleType = AngleType.degrees
+
+            self.degrees2radians()
+            return self
+        else:
+            print(str(self.value) + "  : Error: angle type is not seconds")
+
+   
+    def radians2dms(self): 
+        if self.angleType == AngleType.radians:      
+            degrees = math.degrees(self.value) # 将弧度转换为十进制度数
+
+            self.value = degrees
+            self.angleType = AngleType.degrees
+
+            self.degrees2dms()
+            return self
+
+        else:
+            print(str(self.value) + "  : Error: angle type is not radians") 
+
+    def extractDmsFromDdmmssStr(self,ddmmssStr):
+        """从dd.mmssss字符串中提取dms"""
+        info = ddmmssStr.split(".")
+        dd =   float(info[0])
+
+        if info[0][0] == "-":       
+            mm = - float(info[1][0:2])
+            ss = - float(info[1][2:4] + "." + info[1][4:])
+        else:
+            mm = float(info[1][0:2])
+            ss = float(info[1][2:4] + "." + info[1][4:])
+
+        self.value = (dd, mm, ss)
+        self.angleType = AngleType.dms
+        return self       
+
+    def ddmmssString2radians(self,ddmmssStr):
+        """将 dd.mmssss字符串转化为 弧度 """
+        self.extractDmsFromDdmmssStr(ddmmssStr)        
+
+        self.dms2radians()
+        return self
+
+    def ddmmssString2dd(self,ddmmssStr):
+        """将 dd.mmssss字符串转化为 度 """
+        self.extractDmsFromDdmmssStr(ddmmssStr)
+
+        self.dms2degrees()
+        return self
+
+
+    def ddmmssString2ss(self,ddmmssStr):
+        """将 dd.mmssss字符串转化为 秒 """
+        self.extractDmsFromDdmmssStr(ddmmssStr)
+
+        dd, mm, ss = self.value
+
+        seconds = dd * (3600.0) + mm * (60.0) + ss
+
+        self.value = seconds
+        self.angleType = AngleType.seconds
+        return self
+
+    def radians2dmsString(self):
+        if self.angleType == AngleType.radians:
+            self.radians2dms()
+
+            dmsString = (str(self.value[0]) + "," + str(self.value[1]) + "," + str(self.value[2]))        
+            
+            self.dms2radians()
+            return dmsString
+        else:
+            print(str(self.value) + "  : Error: angle type is not radians") 
+
+########## angle tools test...........
+
+# 以 ddmmss.sss 测试这个字符串"-180.3030123"
+
+# ddmmssStr = "-180.3030123"
+
+# angle_test = Angle()
+
+# angle_test.extractDmsFromDdmmssStr(ddmmssStr)
+# assert float(angle_test.value[0]) == - 180
+# assert float(angle_test.value[1]) == - 30
+# assert float(angle_test.value[2]) == - 30.123
+
+# angle_test.dms2seconds()
+# assert float(angle_test.value) - (- 649830.123) <= 0.001
+
+# angle_test.ddmmssString2dd(ddmmssStr)
+# assert float(angle_test.value) == -180.5083675
+
+# angle_test.ddmmssString2ss(ddmmssStr)
+# assert float(angle_test.value) == -649830.123
+
+# angle_test.seconds2radians()
+# assert float(angle_test.value) == - 180.5083675 * math.pi /180.0
+
+# angle_test.ddmmssString2radians(ddmmssStr)
+# assert float(angle_test.value) == - 180.5083675 * math.pi /180.0
+
+# angle_test.radians2dms()
+# assert float(angle_test.value[0]) == - 180
+# assert float(angle_test.value[1]) == - 30
+# assert float(angle_test.value[2]) - (- 30.123) <= 0.001
+
+# print("Angle tools is ok!" )

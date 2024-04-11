@@ -1,6 +1,8 @@
 import numpy as np
 import math
 
+import util
+
 ## 参数平差
 
 ### 平差前各向量符号
@@ -41,12 +43,23 @@ class Adj_ts_3d():
         self.X_0 = np.zeros(countPara)
         self.dX = np.zeros(countPara)
         self.X = np.zeros(countPara)
-        self.P_para = np.eye(countPara) 
+        self.P_para = np.eye(countPara)
 
+        # 系数矩阵 B,及 常数项向量
+        self.B = np.zeros(countObs,countPara)
+        self.consL = np.zeros(countObs)
     
+    def generateB(self,clearedDataItemList):
+        for index_obs,obs in enumerate(clearedDataItemList):
+            b,constantItem = self.b_computer(obs,
+                                obs.stationOrderForAdj,stationCoord_0,
+                                obs.targetOrderForAdj,targetCoord_0)
+            self.B[index_obs] = b
+            self.consL[index_obs] = constantItem           
 
+    # To add... 初始值的计算
     # 计算三个观测值的系数,以及常数项：bHz, bVz, bSdist，constant
-    #   测站点，目标点在列向量中的的序列号，从 0 开始：index_station, index_target
+    #   待求解参数（测站点，目标点）在列向量中的的序列号，从 0 开始：index_station, index_target
     # 
     def b_computer(self,observation,
                    index_station,stationCoord_0, 
@@ -113,6 +126,8 @@ class Adj_ts_3d():
             # 常数项
             constantItem[index_station * 3 + 2] = observation.obsValue - \
                 math.cos((deltaZ + observation.refHt - observation.stationHt) / distance)
+            
+        return b,constantItem
       
     # 计算测站点到目标点的坐标差,以及距离：deltaX, deltaY, deltaZ
     def diffTwoPoints(self,stationCoord,targetCoord):
@@ -142,14 +157,32 @@ class ClearedData():
                 self.clearedDataItemList.extend(clearedDataItem.obsList)
 
                 line = fo.readline()
-    
+
+    def reOrderParaForAdj(self):
+        targetOrderList = list()
+        for obs in self.clearedDataItemList:
+            targetOrderList.append(obs.indexStation)
+        targetOrderList = util.removeDuplicatesList(targetOrderList)
+
+        for obs in self.clearedDataItemList:
+            for targetOrderIdex,targetOrder in enumerate(targetOrderList):
+                if obs.indexTarget == targetOrder:
+                    obs.targetOrderForAdj = targetOrderIdex
+                
+                if obs.indexStation == targetOrder:
+                    obs.stationOrderForAdj = targetOrderIdex       
+
     def out2File(self,clearedObsFileDir):
         with open(clearedObsFileDir, 'w', encoding='utf-8') as file:
+            stringCapital = ("测站点,观测方向,观测类型,观测值,测站高,棱镜高,站点序号(平差),目标序号(平差) \n")
+            file.write(stringCapital)
+
             for item in self.clearedDataItemList:
                     info = (item.indexStation + "," + item.indexTarget + "," + 
                                 item.obsTag + "," + str(item.obsValue) + "," +
                                 str(item.stationHt) + "," + str(item.refHt) + "," + 
-                                str(item.codeStationPreAdjustment) + "\n") 
+                                str(item.stationOrderForAdj) + "," +
+                                str(item.targetOrderForAdj) + "\n") 
                     file.write(info)
                     # print("test..........")                                 
 
@@ -165,6 +198,7 @@ class ClearedDataItem():
             if obs.parserObs(strLine,pos) != None:
                 self.obsList.append(obs)
 
+# 三个的观测量的一个：方向观测值，或竖直角，或距离
 class Observation():
     def __init__(self) -> None:
         self.indexStation = ""
@@ -174,6 +208,10 @@ class Observation():
         self.obsValue = 0.0
         self.stationHt = 0.0
         self.refHt = 0.0
+        # 生成 B 矩阵中测站点、目标点的顺序号
+        self.stationOrderForAdj = ""
+        self.targetOrderForAdj = ""
+
 
         # 文件中的无效数据标记
         self.deletedTag = "999999"
@@ -190,7 +228,8 @@ class Observation():
             self.stationHt = float(infoList[7])
             self.refHt = float(infoList[8]) 
 
-            self.codeStationPreAdjustment = int(infoList[9])
+            # self.codeStationPreAdjustment = int(infoList[9])
+            #  To add.... 目标的ID
 
             return "OK"           
         else:
@@ -205,12 +244,13 @@ class Observation():
             return "Sdist"
 
 ##### test...............
-clearedDataFileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\clearedData.txt"
+clearedDataFileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\02_clearedData.txt"
 
 clearData = ClearedData()
 clearData.readClearedDataFile(clearedDataFileDir)
+clearData.reOrderParaForAdj()
 
-clearedObsFileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\clearedObs.txt"
+clearedObsFileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\03_clearedObs.txt"
 clearData.out2File(clearedObsFileDir)
 
        
