@@ -165,7 +165,9 @@ class StationObs:
         self.stationHt = stationHt
         self.targetObsList = targetObsList
 
-        self.deleteTag = util.Angle(999999)
+        self.deleteTag = 999999        
+
+        self.averageObsList = list()
         
         #  超限检查：角度单位 秒 ： 20
         self.toleranceRound = [util.Angle(20,util.AngleType.seconds).seconds2radians().value,
@@ -220,13 +222,13 @@ class StationObs:
                 if abs(roundObs.difLRHz.value) > self.toleranceRound[0]:
                     for halfRoundObs in roundObs.halfRoundObsList:
                         # halfRoundObs.Hv = self.deleteTag
-                        halfRoundObs.HzR2L = self.deleteTag
+                        halfRoundObs.HzR2L = util.Angle(self.deleteTag) 
                         print()
                 
                 # 剔除超限的竖直角
                 if abs(roundObs.difLRVz.value) > self.toleranceRound[1]:
                     for halfRoundObs in roundObs.halfRoundObsList:
-                        halfRoundObs.vertical = self.deleteTag
+                        halfRoundObs.vertical = util.Angle(self.deleteTag) 
                         # halfRoundObs.HzR2L = self.deleteTag
                 
                 # 剔除超限的距离
@@ -236,7 +238,36 @@ class StationObs:
                         # halfRoundObs.HzR2L = self.deleteTag
                 
                         pass                
-       
+
+    # 测站点观测数据平均值计算
+    def averageObsComputer(self):                       
+        self.dataClear()
+        for targetObs in self.targetObsList:
+            hzList = list()
+            verticalList = list()
+            sDistList = list()
+
+            for roundObs in targetObs.roundObsList:                
+                for halfRoundObs in roundObs.halfRoundObsList:
+                    if halfRoundObs.HzR2L.value != self.deleteTag:
+                        hzList.append(halfRoundObs.HzR2L)
+
+                    if halfRoundObs.vertical.value != self.deleteTag:
+                        verticalList.append(halfRoundObs.vertical)
+
+                    if halfRoundObs.SDist != self.deleteTag:
+                        sDistList.append(halfRoundObs.SDist)
+
+            averageHz = sum([x.value for x in hzList]) / len(hzList)
+            averageVertical = sum([x.value for x in verticalList]) / len(verticalList)
+            averageSdist = sum(sDistList) / len(sDistList)
+
+            averageObs = (util.Angle(averageHz),
+                          util.Angle(averageVertical),
+                          averageSdist,
+                          targetObs.indexTarget)
+            self.averageObsList.append(averageObs)
+
     # 原始站点数据格式输出：测站点,观测方向,测回数,半测回标志,水平方向,垂直方向,距离,棱镜高,测站高
     def stringFormat_2(self):
         allInfoOneStation = []
@@ -281,7 +312,9 @@ class StationObs:
 
         return allInfoOneStation
 
-    # 原始站点数据检查格式化输出：带外业限差计算输出
+    # 原始站点数据检查格式化输出：
+    #   1）以目标点组织数据输出
+    #   2）带外业限差计算输出
     def stringFormat_3(self):
         allInfoOneStation = []
 
@@ -327,16 +360,95 @@ class StationObs:
                         halfRoundObs.index_halfRound + "," +  \
                         halfRoundObs.Hz.radians2dmsString() + "," + halfRoundObs.Vz.radians2dmsString() + "," + str(halfRoundObs.SDist) + "," + \
                         str(halfRoundObs.refHt) + "," + str(self.stationHt) + ",," + \
-                        halfRoundObs.HzR2L.radians2dmsString() + "," + halfRoundObs.Vz.radians2dmsString() + ",," + \
+                        halfRoundObs.HzR2L.radians2dmsString() + "," + halfRoundObs.vertical.radians2dmsString() + ",," + \
                         infoRoundComputer + ",," + \
                         infoAverageMutiRound + ",," + \
                         infoMutiRoundDif + ",," + "\n"  
                                       
-                    print(info)
+                    # print(info)
                     allInfoOneStation.append(info)
 
                     info = "" 
         return allInfoOneStation    
+    
+# 原始站点数据检查格式化输出：
+    #   1）以测回组织数据输出
+    #   2）带外业限差计算输出
+    def stringFormat_4(self):
+        allInfoOneStation = [] 
+
+        # 获取所有盘左的数据信息
+        round_count = len(self.targetObsList[0].roundObsList)
+        infoHalfRoundOnOff = "ON"                       
+        for round_id in range(round_count):
+            infoRoundOnOff = "ON"            
+            for indexTag ,targetObs in enumerate(self.targetObsList):                
+                for indexRound,roundObs in enumerate(targetObs.roundObsList): 
+                    if indexRound == round_id: 
+                        for indexHalfRound,halfRoundObs in enumerate(roundObs.halfRoundObsList):
+                            if halfRoundObs.index_halfRound == "R":
+                                infoHalfRound = halfRoundObs.index_halfRound
+                                infoRound = roundObs.indexRound                                
+                                infoStation = self.indexStation
+                                
+                                if infoHalfRoundOnOff == "OFF":
+                                    infoHalfRound =""
+                                    infoStation = "" 
+                                
+                                if infoRoundOnOff == "OFF": 
+                                    infoRound = ""
+
+
+                                info = (infoStation + "," + infoRound + "," + infoHalfRound + "," + targetObs.indexTarget  + ",")
+                                
+                                infoHalfRoundOnOff = "OFF"
+                                infoRoundOnOff = "OFF"
+
+                                infofixed = (halfRoundObs.Hz.radians2dmsString() + "," + halfRoundObs.Vz.radians2dmsString() + "," + str(halfRoundObs.SDist) + "," + 
+                                            str(halfRoundObs.refHt) + "," + str(self.stationHt) + ",," + 
+                                            halfRoundObs.HzR2L.radians2dmsString() + "," + halfRoundObs.vertical.radians2dmsString() + ",," + "\n" ) 
+                                
+                                info += infofixed
+
+                                allInfoOneStation.append(info) 
+        info = ""    
+
+        # 获取所有盘右的数据信息                 
+        infoHalfRoundOnOff = "ON"                       
+        for round_id in range(round_count):
+            infoRoundOnOff = "ON"            
+            for indexTag ,targetObs in enumerate(self.targetObsList):                
+                for indexRound,roundObs in enumerate(targetObs.roundObsList): 
+                    if indexRound == round_id: 
+                        for indexHalfRound,halfRoundObs in enumerate(roundObs.halfRoundObsList):
+                            if halfRoundObs.index_halfRound == "R":
+                                infoHalfRound = halfRoundObs.index_halfRound
+                                infoRound = roundObs.indexRound                                
+                                infoStation = self.indexStation
+                                
+                                if infoHalfRoundOnOff == "OFF":
+                                    infoHalfRound =""
+                                    infoStation = "" 
+                                
+                                if infoRoundOnOff == "OFF": 
+                                    infoRound = ""
+
+
+                                info = (infoStation + "," + infoRound + "," + infoHalfRound + "," + targetObs.indexTarget  + ",")
+                                infoHalfRoundOnOff = "OFF"
+                                infoRoundOnOff = "OFF"
+
+                                infofixed = (halfRoundObs.Hz.radians2dmsString() + "," + halfRoundObs.Vz.radians2dmsString() + "," + str(halfRoundObs.SDist) + "," + 
+                                            str(halfRoundObs.refHt) + "," + str(self.stationHt) + ",," + 
+                                            halfRoundObs.HzR2L.radians2dmsString() + "," + halfRoundObs.vertical.radians2dmsString() + ",," + "\n" ) 
+                                
+                                info += infofixed
+
+                                allInfoOneStation.append(info) 
+        info = ""               
+            
+        return allInfoOneStation
+
    
 # 一个标准的工程记录文件
 class RoundMeasureFile:
@@ -353,11 +465,12 @@ class RoundMeasureFile:
                 infoList = stationObs.stringFormat_2()
                 for info in infoList:
                     file.write(info)
-
+    
+    # 以目标点组织数据输出
     def generateRawCheckFile(self,stationObsList,outPutFileDir):
         with open(outPutFileDir, 'w', encoding='utf-8') as file:            
             stringCapital = ("测站点,观测点,测回数,半测回标志,水平方向,,,垂直方向,,,距离,棱镜高,测站高,," +
-                             "转换到盘左的Hz,,,转换到盘左的Vz,,,," + 
+                             "转换到盘左的Hz,,,转换到竖直角VzVz,,,," + 
                              "水平角2C差,,,垂直角指标差,,,距离差（测回内）,," + 
                              "（一测回）水平方向平均值,,,垂直方向平均值,,,距离平均值,," + 
                              "（多测回）水平方向平均值,,,垂直方向平均值,,,距离平均值,," + 
@@ -385,32 +498,11 @@ class RoundMeasureFile:
                 file.write(infoCheck)
                 pass
     
-    # 生成删除了粗差的观测数据
-    def generateClearedDataFile(self,stationObsList,clearedFileDir):
-        # with open(clearedFileDir, 'w', encoding='utf-8') as file:
-            # stringCapital = ("测站点,观测方向,测回数,半测回标志,方位角,竖直角,距离,测站高,棱镜高, \n")
-            # file.write(stringCapital)
-            
-            # for indexStation,stationObs in enumerate(stationObsList):
-                # codeStationPreAdjumtment = indexStation
-                # stationObs.dataClear()
-                # for targetObs in stationObs.targetObsList:
-                #     for roundObs in targetObs.roundObsList:                
-                #         for halfRoundObs in roundObs.halfRoundObsList:
-                #             infoData = (stationObs.indexStation + "," + 
-                #                 targetObs.indexTarget + "," + 
-                #                 roundObs.indexRound + "," + 
-                #                 halfRoundObs.index_halfRound + "," + 
-                #                 str(halfRoundObs.HzR2L) + "," +
-                #                 str(halfRoundObs.vertical.value) + "," + 
-                #                 str(halfRoundObs.SDist) + "," +
-                #                 str(stationObs.stationHt) + "," +
-                #                 str(halfRoundObs.refHt) + "," + "\n")
-                            # file.write(infoData)
-                
-        with open(clearedFileDir, 'w', encoding='utf-8') as file:            
-            stringCapital = ("测站点,观测点,测回数,半测回标志,水平方向,,,垂直方向,,,距离,棱镜高,测站高,," +
-                             "转换到盘左的Hz,,,转换到盘左的Vz,,,," + 
+    # 以测回组织数据输出
+    def generateRawCheckFileByRound(self,stationObsList,outPutFileDir):
+         with open(outPutFileDir, 'w', encoding='utf-8') as file:            
+            stringCapital = ("测站点,测回数,半测回标志,观测点,水平方向,,,垂直方向,,,距离,棱镜高,测站高,," +
+                             "转换到盘左的Hz,,,转换到竖直角Vz,,,," + 
                              "水平角2C差,,,垂直角指标差,,,距离差（测回内）,," + 
                              "（一测回）水平方向平均值,,,垂直方向平均值,,,距离平均值,," + 
                              "（多测回）水平方向平均值,,,垂直方向平均值,,,距离平均值,," + 
@@ -419,25 +511,52 @@ class RoundMeasureFile:
             file.write(stringCapital)
 
             for stationObs in stationObsList:
-                stationObs.dataClear()
-                infoList = stationObs.stringFormat_3()
+                infoList = stationObs.stringFormat_4()
                 for info in infoList:
                     file.write(info)
 
-            # 增加超限检查         
-            resultInfoRoundCheck = (" \n out of range: " + "\n")
-                                
-            resultInfoRoundCheck += ("测站, 目标, 测回,," + 
-                                     "水平角差, 垂直角差, 距离差（一测回）,," +
-                                     "水平角差, 垂直角差, 距离差（与多测回平均值差）\n")
-            # 输出表头
-            file.write(resultInfoRoundCheck)
+    # 生成删除了粗差的观测数据,用于平差处理的输入
+    def generateClearedDataFile(self,stationObsList,clearedFileDir):
+        with open(clearedFileDir, 'w', encoding='utf-8') as file:
+            stringCapital = ("测站点,观测方向,测回数,半测回标志,方位角,竖直角,距离,测站高,棱镜高, \n")
+            file.write(stringCapital)
             
-            # 输出超限项
-            for stationObs in stationObsList:
-                infoCheck = stationObs.stationObsCheck()
-                file.write(infoCheck)
-                pass
+            for indexStation,stationObs in enumerate(stationObsList):               
+                
+                stationObs.dataClear()
+
+                stationObs.averageObsComputer()
+
+                for targetObs, average in zip(stationObs.targetObsList, stationObs.averageObsList):
+                    averageONOff = "ON"
+                    
+                    for roundObs in targetObs.roundObsList:
+                        for halfRoundObs in roundObs.halfRoundObsList:
+                            averageInfo = (str(average[0].value) + "," + str(average[1].value) + "," +
+                                           str(average[2]) + ",")
+                            if (averageONOff == "OFF"):
+                                averageInfo = ""
+                                
+                            infoData = (stationObs.indexStation + "," + 
+                                targetObs.indexTarget + "," + 
+                                roundObs.indexRound + "," + 
+                                halfRoundObs.index_halfRound + "," + 
+                                str(halfRoundObs.HzR2L.value) + "," +
+                                str(halfRoundObs.vertical.value) + "," + 
+                                str(halfRoundObs.SDist) + "," +
+                                str(stationObs.stationHt) + "," +
+                                str(halfRoundObs.refHt) + ",," + 
+                                averageInfo + "\n")
+                            file.write(infoData)
+
+                            averageONOff = "OFF"
+
+
+              
+  
+
+
+
 
 
 
