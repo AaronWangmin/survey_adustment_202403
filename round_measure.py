@@ -386,27 +386,46 @@ class StationObs:
                 for indexRound,roundObs in enumerate(targetObs.roundObsList): 
                     if indexRound == round_id: 
                         for indexHalfRound,halfRoundObs in enumerate(roundObs.halfRoundObsList):
-                            if halfRoundObs.index_halfRound == "R":
+                            if halfRoundObs.index_halfRound == "L":
                                 infoHalfRound = halfRoundObs.index_halfRound
                                 infoRound = roundObs.indexRound                                
                                 infoStation = self.indexStation
+                                
+                                infoRoundComputer = (str(roundObs.difLRHz.radians2dmsString()) + "," + str(roundObs.difLRVz.radians2dmsString()) + "," + str(roundObs.difLRSDist) + ",," + 
+                                             str(roundObs.averageLRHz.radians2dmsString()) + "," + str(roundObs.averageLRVz.radians2dmsString()) + "," + str(roundObs.averageLRSDist))                           
+                                                                
+                                if indexRound == 0:
+                                    infoAverageMutiRound = (str(targetObs.averageMutiRoundHz.radians2dmsString()) + ","  + 
+                                            str(targetObs.averageMutiRoundVz.radians2dmsString()) + "," + str(targetObs.averageMutiRoundSDist))
+                                else:
+                                    infoAverageMutiRound = ",,,,,,"
+                                
+                                infoMutiRoundDif = (util.Angle(roundObs.averageLRHz.value - targetObs.averageMutiRoundHz.value).radians2dmsString() + "," + 
+                                        util.Angle(roundObs.averageLRVz.value - targetObs.averageMutiRoundVz.value).radians2dmsString() + "," + 
+                                        str(roundObs.averageLRSDist - targetObs.averageMutiRoundSDist))                                    
                                 
                                 if infoHalfRoundOnOff == "OFF":
                                     infoHalfRound =""
                                     infoStation = "" 
                                 
                                 if infoRoundOnOff == "OFF": 
-                                    infoRound = ""
+                                    infoRound = ""                                    
 
+                                # if infoAverageMutiRoundOnOff == "OFF":
+                                #     infoAverageMutiRound = ""
 
                                 info = (infoStation + "," + infoRound + "," + infoHalfRound + "," + targetObs.indexTarget  + ",")
-                                
+
                                 infoHalfRoundOnOff = "OFF"
                                 infoRoundOnOff = "OFF"
-
+                                infoAverageMutiRoundOnOff = "OFF"  
+                                
                                 infofixed = (halfRoundObs.Hz.radians2dmsString() + "," + halfRoundObs.Vz.radians2dmsString() + "," + str(halfRoundObs.SDist) + "," + 
                                             str(halfRoundObs.refHt) + "," + str(self.stationHt) + ",," + 
-                                            halfRoundObs.HzR2L.radians2dmsString() + "," + halfRoundObs.vertical.radians2dmsString() + ",," + "\n" ) 
+                                            "," + "," + halfRoundObs.vertical.radians2dmsString() + ",," + infoRoundComputer + ",," +
+                                            infoAverageMutiRound + ",," +
+                                            infoMutiRoundDif + "\n" ) 
+                                
                                 
                                 info += infofixed
 
@@ -448,7 +467,6 @@ class StationObs:
         info = ""               
             
         return allInfoOneStation
-
    
 # 一个标准的工程记录文件
 class RoundMeasureFile:
@@ -503,7 +521,7 @@ class RoundMeasureFile:
          with open(outPutFileDir, 'w', encoding='utf-8') as file:            
             stringCapital = ("测站点,测回数,半测回标志,观测点,水平方向,,,垂直方向,,,距离,棱镜高,测站高,," +
                              "转换到盘左的Hz,,,转换到竖直角Vz,,,," + 
-                             "水平角2C差,,,垂直角指标差,,,距离差（测回内）,," + 
+                             "水平角2C差,,,垂直角指标差,,距离差（测回内）,," + 
                              "（一测回）水平方向平均值,,,垂直方向平均值,,,距离平均值,," + 
                              "（多测回）水平方向平均值,,,垂直方向平均值,,,距离平均值,," + 
                              "（与多测回平均值的差）水平角差,,,垂直角差,,,距离差" + "\n")
