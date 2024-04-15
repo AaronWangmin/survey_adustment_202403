@@ -46,16 +46,27 @@ class Adj_ts_3d():
         self.P_para = np.eye(countPara)
 
         # 系数矩阵 B,及 常数项向量
-        self.B = np.zeros(countObs,countPara)
+        self.B = np.zeros((countObs,countPara))
         self.consL = np.zeros(countObs)
+
+    def getX_0(self,X_0):
+        index = 0
+        for coord in X_0:
+            for value in coord:
+                self.X_0[index] = value
+                index += 1
     
     def generateB(self,clearedDataItemList):
         for index_obs,obs in enumerate(clearedDataItemList):
+            stationCoord_0 = self.X_0[obs.stationOrderForAdj * 3 : obs.stationOrderForAdj * 3 + 3]
+            targetCoord_0 = self.X_0[obs.targetOrderForAdj * 3 : obs.targetOrderForAdj * 3 + 3]
+
             b,constantItem = self.b_computer(obs,
                                 obs.stationOrderForAdj,stationCoord_0,
                                 obs.targetOrderForAdj,targetCoord_0)
             self.B[index_obs] = b
-            self.consL[index_obs] = constantItem           
+            self.consL[index_obs] = constantItem 
+            pass          
 
     # To add... 初始值的计算
     # 计算三个观测值的系数,以及常数项：bHz, bVz, bSdist，constant
@@ -75,7 +86,8 @@ class Adj_ts_3d():
         rho =  1.0   
 
         b = np.zeros(self.countPara)
-        constantItem = np.zeros(self.countPara)
+        constantItem = 0.0        
+        # constantItem = np.zeros(self.countPara)
 
         #  方向观测值系数
         if observation.obsTag == "Hz":
@@ -88,8 +100,8 @@ class Adj_ts_3d():
             b[index_target * 3 + 1] =   rho * deltaX / (distance * distance)
 
             # arrtan 可能有问题。。。。。。。。。
-            # 常数项
-            constantItem[index_station * 3] = observation.obsValue - np.arctan2(deltaY - deltaX)
+            # 常数项 [index_station * 3]
+            constantItem = observation.obsValue - np.arctan2(deltaY, deltaX)
 
         # To add light correct...........
         # 距离观测值系数
@@ -105,9 +117,11 @@ class Adj_ts_3d():
             b[index_target * 3 + 1] =   deltaY / distance   
             b[index_target * 3 + 2] =   deltaZ / distance
 
-            # 常数项
-            constantItem[index_station * 3 + 1] = observation.obsValue - \
-                math.pow(deltaX * deltaX + deltaY * deltaY + (deltaZ + observation.refHt - observation.stationHt ),0.5)
+            # 常数项 [index_station * 3 + 1]
+            constantItem = observation.obsValue - \
+                math.pow(deltaX * deltaX + deltaY * deltaY + 
+                         (deltaZ + observation.refHt - observation.stationHt) * (deltaZ + observation.refHt - observation.stationHt) 
+                         ,0.5)
 
         # To add light correct..........
         # 竖直角观测值系数
@@ -123,8 +137,8 @@ class Adj_ts_3d():
             b[index_target * 3 + 1] =   rho * deltaZ * deltaY / (distance * distance * distance_2D * distance_2D) 
             b[index_target * 3 + 2] = - rho * distance_2D / (distance * distance)
 
-            # 常数项
-            constantItem[index_station * 3 + 2] = observation.obsValue - \
+            # 常数项 [index_station * 3 + 2]
+            constantItem = observation.obsValue - \
                 math.cos((deltaZ + observation.refHt - observation.stationHt) / distance)
             
         return b,constantItem
@@ -140,9 +154,54 @@ class Adj_ts_3d():
         stationCoord_2d = stationCoord[0:2]
         targetCoord_2d = targetCoord[0:2]
         distance_2D = np.linalg.norm(targetCoord_2d - stationCoord_2d)
+        
+        # assert distance_2D != 0
 
         return deltaXYZ,distance,distance_2D
 
+    # 计算验前中误差，以仪器的角度观测精度为单位权中误差，单位为： 秒
+    #                            距离的中误差: a + b * sdist
+    #                                 固定误差 a, 单位为： mm
+    #                                 比例误差 b, 单位为： ppm (10 -6)
+    #                                 距离sdist,  单位为： km
+    def generatePreObsP(self,clearedDataItemList,sigama_angle,sigma_dist_a,sigma_dist_b):
+         for index_obs,obs in enumerate(clearedDataItemList):
+            if obs.obsTag == "Hz" or obs.obsTag == "Vertical":
+                self.P_obs[index_obs,index_obs] = 1
+                 
+            if obs.obsTag == "Sdist":
+                sigma_dist = sigma_dist_a + sigma_dist_b * obs.obsValue
+                
+                sigma_angle_radian = util.Angle(sigama_angle,util.AngleType.seconds)
+                sigma_angle_radian.seconds2radians()
+                
+                p_dist = sigma_angle_radian.value * sigma_angle_radian.value / (sigma_dist * sigma_dist)
+                self.P_obs[index_obs,index_obs] = p_dist 
+ 
+    # 秩亏自由网平差计算，及精度评定
+    def adjCompute(self,t = 7):
+        N = np.transpose(self.B) @ self.B
+        W = np.transpose(self.B) @ self.consL
+        
+        Nm_inverse = N @ np.linalg.inv(N @ N)
+        
+        self.dX = Nm_inverse @ W
+        
+        self.V = self.B @ self.dX - self.consL
+        
+        self.L_computed = self.L + self.V
+        
+        self.X = self.X_0 + self.dX
+        
+        sigama = np.transpose(self.V) @ self.P_obs @ self.V / (self.countObs - t)
+        
+        self.P_para = Nm_inverse @ Nm_inverse @ N
+        
+        
+        
+        
+      
+        
 class ClearedData():
     def __init__(self) -> None:
         self.clearedDataItemList = list()
@@ -157,7 +216,8 @@ class ClearedData():
                 self.clearedDataItemList.extend(clearedDataItem.obsList)
 
                 line = fo.readline()
-
+    
+    # 设站站与目标点统一编号,为参数位置计算做准备
     def reOrderParaForAdj(self):
         targetOrderList = list()
         for obs in self.clearedDataItemList:
@@ -212,7 +272,6 @@ class Observation():
         self.stationOrderForAdj = ""
         self.targetOrderForAdj = ""
 
-
         # 文件中的无效数据标记
         self.deletedTag = "999999"
 
@@ -234,7 +293,8 @@ class Observation():
             return "OK"           
         else:
             return None
-        
+    
+    # 在 clearedData文件的行中，水平角、竖直角、距离在以“,”分割的位置    
     def parseObsPos(self,obsPos):
         if obsPos == 4:
             return "Hz"
@@ -243,15 +303,44 @@ class Observation():
         if obsPos == 6:
             return "Sdist"
 
-##### test...............
-clearedDataFileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\02_clearedData.txt"
+##### test clearData...............
+clearedDataFileDir = "02_clearedData.txt"
+# clearedDataFileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\02_clearedData.txt"
 
 clearData = ClearedData()
 clearData.readClearedDataFile(clearedDataFileDir)
 clearData.reOrderParaForAdj()
 
-clearedObsFileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\03_clearedObs.txt"
+clearedObsFileDir = "03_clearedObs.txt"
+# clearedObsFileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\03_clearedObs.txt"
 clearData.out2File(clearedObsFileDir)
+
+##### test Adj_ts_3d...............
+countObs = 538
+countPara = 15  # 5个站点 * 3个参数值（XYZ）
+X_0_intial = [(-0.8736609303775807, 14.967716963273462, -0.21748118731452684),
+       (0.0, 0.0, 0.0),
+       (23.172887334619638, -0.018205564173390653, -1.3273795874105865),
+       (31.72325757418823, 29.200592775320494, -1.1315456361540115),
+       (12.430182539213149, 25.38427122112945, -0.9749403607005105)]
+
+adj = Adj_ts_3d(countObs,countPara)
+adj.getX_0(X_0_intial )
+print("test: getX_0()....")
+
+adj.generateB(clearData.clearedDataItemList)
+print("test: B, L")
+
+adj.generatePreObsP(clearData.clearedDataItemList, 0.5, 0.6, 1)
+print("test: preObsP")
+
+adj.adjCompute()
+print("test: adj")
+
+
+
+
+
 
        
     
