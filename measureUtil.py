@@ -12,7 +12,7 @@ def compute3DXYZ(startXYZ,Hz,Vertical,SDist,stationHt = 0, refHt =0):
     Z1 = startXYZ[2]
 
     # TODO: + -
-    deltaZ = SDist * math.sin(Vertical) - (refHt - stationHt)
+    deltaZ = SDist * math.sin(Vertical) + (stationHt - refHt)
 
     distHorizontal = SDist * math.cos(Vertical)
 

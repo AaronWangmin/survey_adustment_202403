@@ -252,7 +252,8 @@ class LeicaIDX:
             self.allStationObsByTarget.append(stationObsByTarget)
 
 ###  test......    ..................
-fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\20240407_edit_0408.IDX"
+fileDir = "20240407_edit_0408.IDX"
+# fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\20240407_edit_0408.IDX"
 # fileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\240403.1.IDX"
 
 # allStationBlcokList = extractAllStationBlock(fileDir)

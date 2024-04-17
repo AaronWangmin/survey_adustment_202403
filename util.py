@@ -11,7 +11,6 @@ def removeDuplicatesList(lst):
 # angle tools
 #
 
-
 # 定义角度的枚举类型
 class AngleType(Enum):
     radians = 0

@@ -43,7 +43,7 @@ class Adj_ts_3d():
         self.X_0 = np.zeros(countPara)
         self.dX = np.zeros(countPara)
         self.X = np.zeros(countPara)
-        self.P_para = np.eye(countPara)
+        self.Q_para = np.eye(countPara)
 
         # 系数矩阵 B,及 常数项向量
         self.B = np.zeros((countObs,countPara))
@@ -83,7 +83,7 @@ class Adj_ts_3d():
         deltaZ = deltaXYZ[2] 
 
         # To to edit...
-        rho =  1.0   
+        rho =  180 * 3600.0 / math.pi
 
         b = np.zeros(self.countPara)
         constantItem = 0.0        
@@ -170,20 +170,20 @@ class Adj_ts_3d():
                 self.P_obs[index_obs,index_obs] = 1
                  
             if obs.obsTag == "Sdist":
-                sigma_dist = sigma_dist_a + sigma_dist_b * obs.obsValue
+                sigma_dist = sigma_dist_a + sigma_dist_b * obs.obsValue / 1000.0
                 
-                sigma_angle_radian = util.Angle(sigama_angle,util.AngleType.seconds)
-                sigma_angle_radian.seconds2radians()
+                # sigma_angle_radian = util.Angle(sigama_angle,util.AngleType.seconds)
+                # sigma_angle_radian.seconds2radians()
                 
-                p_dist = sigma_angle_radian.value * sigma_angle_radian.value / (sigma_dist * sigma_dist)
+                p_dist = sigama_angle * sigama_angle / (sigma_dist * sigma_dist)
                 self.P_obs[index_obs,index_obs] = p_dist 
  
     # 秩亏自由网平差计算，及精度评定
     def adjCompute(self,t = 7):
-        N = np.transpose(self.B) @ self.B
-        W = np.transpose(self.B) @ self.consL
+        N = np.transpose(self.B) @ self.P_obs @ self.B
+        W = np.transpose(self.B) @ self.P_obs @ self.consL
         
-        Nm_inverse = N @ np.linalg.inv(N @ N)
+        Nm_inverse = np.transpose(N) @ np.linalg.inv(N @ np.transpose(N))
         
         self.dX = Nm_inverse @ W
         
@@ -191,16 +191,15 @@ class Adj_ts_3d():
         
         self.L_computed = self.L + self.V
         
-        self.X = self.X_0 + self.dX
+        self.X = self.X_0 + self.dX        
         
-        sigama = np.transpose(self.V) @ self.P_obs @ self.V / (self.countObs - t)
+        self.Q_para = Nm_inverse @ Nm_inverse @ N
         
-        self.P_para = Nm_inverse @ Nm_inverse @ N
+        sigama_2 = np.transpose(self.V) @ self.P_obs @ self.V / (self.countObs - t)
+        
+        self.sigama_para = np.diag(sigama_2 * np.sqrt(self.Q_para))
         
         
-        
-        
-      
         
 class ClearedData():
     def __init__(self) -> None:
@@ -304,19 +303,19 @@ class Observation():
             return "Sdist"
 
 ##### test clearData...............
-clearedDataFileDir = "02_clearedData.txt"
+clearedDataFileDir = "02_clearedData_1.txt"
 # clearedDataFileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\02_clearedData.txt"
 
 clearData = ClearedData()
 clearData.readClearedDataFile(clearedDataFileDir)
 clearData.reOrderParaForAdj()
 
-clearedObsFileDir = "03_clearedObs.txt"
+clearedObsFileDir = "03_clearedObs_1.txt"
 # clearedObsFileDir = "G:\\learn_python_202012\\adjustment-parameter-202404\\03_clearedObs.txt"
 clearData.out2File(clearedObsFileDir)
 
 ##### test Adj_ts_3d...............
-countObs = 538
+countObs = 535
 countPara = 15  # 5个站点 * 3个参数值（XYZ）
 X_0_intial = [(-0.8736609303775807, 14.967716963273462, -0.21748118731452684),
        (0.0, 0.0, 0.0),

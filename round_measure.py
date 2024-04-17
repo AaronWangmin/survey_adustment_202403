@@ -58,24 +58,37 @@ class halfRoundObs:
     
     # 将 天顶距 转化为 竖直角
     #   盘左时： 90 - L (左天顶距：当初准轴水平时为 90度)
-#   #   盘左时： R - 270
+#   #   盘右时： R - 270
     def azimuth2Vertical(self):
         vertical = util.Angle()
 
         if self.index_halfRound == "L":
             degrees_90 = util.Angle(90,util.AngleType.degrees)
             degrees_90.degrees2radians()
-
-            vertical.value = degrees_90.value - self.Vz.value           
-            self.vertical = vertical            
+            
+            # 转换为竖直角
+            # vertical.value = degrees_90.value - self.Vz.value           
+            # self.vertical = vertical   
+            
+            # 天顶距
+            vertical.value = self.Vz.value  
+            self.vertical = vertical   
             print()
 
         if self.index_halfRound == "R":
             degrees_270 = util.Angle(270,util.AngleType.degrees)
             degrees_270.degrees2radians()
-
-            vertical.value = self.Vz.value - degrees_270.value
-            self.vertical = vertical
+            
+            # 转换为竖直角
+            # vertical.value = self.Vz.value - degrees_270.value
+            # self.vertical = vertical
+            
+            # 转换为盘左天顶距
+            degrees_360 = util.Angle(360,util.AngleType.degrees)
+            degrees_360.degrees2radians()
+            vertical.value = degrees_360.value - self.Vz.value  
+            self.vertical = vertical              
+            
 
 # 一个测回类：仅是一个目标点的一个测回观测，但可以包含多次按键测量的数据。
 class RoundObs:
@@ -258,8 +271,18 @@ class StationObs:
                     if halfRoundObs.SDist != self.deleteTag:
                         sDistList.append(halfRoundObs.SDist)
 
-            averageHz = sum([x.value for x in hzList]) / len(hzList)
-            averageVertical = sum([x.value for x in verticalList]) / len(verticalList)
+            if len(hzList) != 0:                
+                averageHz = sum([x.value for x in hzList]) / len(hzList)
+            else:
+                averageHz = self.deleteTag
+                print("ERROR: len(hzList) = 0")
+                
+            if len(verticalList) != 0:
+                averageVertical = sum([x.value for x in verticalList]) / len(verticalList)
+            else:
+                averageVertical = self.deleteTag
+                print("ERROR: len(verticalList) = 0")
+               
             averageSdist = sum(sDistList) / len(sDistList)
 
             averageObs = (util.Angle(averageHz),
