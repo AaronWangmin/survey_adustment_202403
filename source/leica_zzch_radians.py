@@ -120,7 +120,7 @@ class ZzchRadinas:
                    
 # test........
 # 
-zzcch_radians_dir = "data\\sh20240418-b2.txt"
+zzcch_radians_dir = "data\\sh20240418-1.txt"
 
 zzchRadinas = ZzchRadinas()
 zzchRadinas.extractAllRawStationBlock(zzcch_radians_dir)
@@ -130,8 +130,9 @@ outPutPrefix = zzcch_radians_dir.split(".")[0]
 roundMeasureFile = rm.RoundMeasureFile()
 roundMeasureFile.generateRawMeasureFile(zzchRadinas.allStationObsList,str(outPutPrefix + "_00_rawData.txt"))
 roundMeasureFile.generateRawCheckFile(zzchRadinas.allStationObsList,str(outPutPrefix + "_01_rawCheckData.txt"))
-roundMeasureFile.generateRawCheckFileByRound(zzchRadinas.allStationObsList,str(outPutPrefix + "__01_rawCheckDataByRound.txt"))
+roundMeasureFile.generateRawCheckFileByRound(zzchRadinas.allStationObsList,str(outPutPrefix + "_01_rawCheckDataByRound.txt"))
 roundMeasureFile.generateClearedDataFile(zzchRadinas.allStationObsList,str(outPutPrefix + "_02_clearedData.txt"))
+roundMeasureFile.generateClearedAverageFile(zzchRadinas.allStationObsList,str(outPutPrefix + "_03_clearedAverageData.txt"))
 print("test....")
 
 

@@ -274,3 +274,4 @@ roundMeasureFile.generateRawMeasureFile(leicaIDX.allStationObsByTarget,"data\\00
 roundMeasureFile.generateRawCheckFile(leicaIDX.allStationObsByTarget,"data\\01_rawCheckData.txt")
 roundMeasureFile.generateRawCheckFileByRound(leicaIDX.allStationObsByTarget,"data\\01_rawCheckDataByRound.txt")
 roundMeasureFile.generateClearedDataFile(leicaIDX.allStationObsByTarget,"data\\02_clearedData.txt")
+roundMeasureFile.generateClearedAverageFile(leicaIDX.allStationObsByTarget,"data\\03_clearedAverageData.txt")

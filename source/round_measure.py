@@ -152,6 +152,9 @@ class TargetObs:
     def __init__(self,indexTarget = "", roundObsList = []) -> None:
         self.indexTarget = indexTarget
         self.roundObsList = roundObsList
+        
+        # TODO...
+        # 目标点的高度应该从halfRound类中移到这里
 
         self.averageMutiRoundHz = util.Angle()
         self.averageMutiRoundVz = util.Angle()
@@ -559,7 +562,7 @@ class RoundMeasureFile:
     # 生成删除了粗差的观测数据,用于平差处理的输入
     def generateClearedDataFile(self,stationObsList,clearedFileDir):
         with open(clearedFileDir, 'w', encoding='utf-8') as file:
-            stringCapital = ("测站点,观测方向,测回数,半测回标志,方位角,竖直角,距离,测站高,棱镜高, \n")
+            stringCapital = ("测站点,观测方向,测回数,半测回标志,左盘方位角,竖直角,距离,测站高,棱镜高, \n")
             file.write(stringCapital)
             
             for indexStation,stationObs in enumerate(stationObsList):               
@@ -591,6 +594,34 @@ class RoundMeasureFile:
                             file.write(infoData)
 
                             averageONOff = "OFF"
+    
+    # 生成删除了粗差的观测数据的平均值,用于计算概略坐标的计算   
+    def generateClearedAverageFile(self,stationObsList,clearedFileDir):
+        with open(clearedFileDir, 'w', encoding='utf-8') as file:
+            stringCapital = ("测站点,观测方向,左盘方位角,竖直角,距离,测站高,棱镜高, \n")
+            file.write(stringCapital)
+            
+            for indexStation,stationObs in enumerate(stationObsList):               
+                
+                stationObs.dataClear()
+
+                stationObs.averageObsComputer()
+
+                for targetObs, average in zip(stationObs.targetObsList, stationObs.averageObsList):
+                                        
+                    averageInfo = (str(average[0].value) + "," + str(average[1].value) + "," +
+                                    str(average[2]))
+                    
+                    infoData = (stationObs.indexStation + "," + 
+                        targetObs.indexTarget + "," +                        
+                        averageInfo + "," + 
+                        str(stationObs.stationHt) + "," +
+                        str(targetObs.roundObsList[0].halfRoundObsList[0].refHt) + ",," +
+                        average[0].radians2dmsString() + "\n")
+                    
+                    file.write(infoData)
+
+
 
 
               
