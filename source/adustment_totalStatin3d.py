@@ -3,6 +3,7 @@ import math
 
 import util
 import measureUtil
+import ellipsoild as eps
 
 ## 参数平差
 
@@ -60,8 +61,8 @@ class Adj_ts_3d():
     
     def generateB(self,clearedDataItemList):
         for index_obs,obs in enumerate(clearedDataItemList):
-            stationCoord_0 = self.X_0[obs.stationOrderForAdj * 4 : obs.stationOrderForAdj * 4 + 4]
-            targetCoord_0 = self.X_0[obs.targetOrderForAdj * 4 : obs.targetOrderForAdj * 4 + 4]
+            stationCoord_0 = self.X_0[obs.stationOrderForAdj * 5 : obs.stationOrderForAdj * 5 + 5]
+            targetCoord_0 = self.X_0[obs.targetOrderForAdj * 5 : obs.targetOrderForAdj * 5 + 5]
 
             b,constantItem = self.b_computer(obs,
                                 obs.stationOrderForAdj,stationCoord_0,
@@ -77,13 +78,27 @@ class Adj_ts_3d():
                    index_target,targetCoord_0):        
         
         deltaENU, distance,distance_2D = self.diffTwoPoints(stationCoord_0[0:3],targetCoord_0[0:3])
-
+        
+        # 测站初始坐标增量
         deltaX = deltaENU[0]
         deltaY = deltaENU[1]
         deltaZ = deltaENU[2] 
         
+        # 测站初始定向角
+        theta_0 = stationCoord_0[3]
+        # 测站初始折光系数
+        k0 = stationCoord_0[4]        
+        
         rho =  180 * 3600.0 / math.pi
-        # rho =  1
+        
+        # 平均曲率
+        latitude = util.Angle(31.10012878,util.AngleType.degrees)
+        latitude.degrees2radians()
+        ellip = eps.Ellipsoild()
+        R = ellip.computeRn(latitude.value)        
+        
+        # 折光系数初值,及改正项        
+        deltaLight = - distance_2D * distance_2D * (1 - k0) / (2 * R) 
 
         b = np.zeros(self.countPara)
         constantItem = 0.0         
@@ -91,19 +106,18 @@ class Adj_ts_3d():
         #  方向观测值系数
         if observation.obsTag == "Hz":
             # 测站点dx,dy的系数
-            b[index_station * 4]     =   rho * deltaY / (distance_2D * distance_2D)
-            b[index_station * 4 + 1] = - rho * deltaX / (distance_2D * distance_2D)            
+            b[index_station * 5]     =   rho * deltaY / (distance_2D * distance_2D)
+            b[index_station * 5 + 1] = - rho * deltaX / (distance_2D * distance_2D)            
 
             # 测站定向角 dTheta的 系数
-            b[index_station * 4 + 3] = -1
+            b[index_station * 5 + 3] = -1
             
             # 目标点dx,dy,dz的系数
-            b[index_target * 4]     = - rho * deltaY / (distance_2D * distance_2D)
-            b[index_target * 4 + 1] =   rho * deltaX / (distance_2D * distance_2D)            
+            b[index_target * 5]     = - rho * deltaY / (distance_2D * distance_2D)
+            b[index_target * 5 + 1] =   rho * deltaX / (distance_2D * distance_2D)            
 
             # arrtan 可能有问题。。。。。。。。。
-            # 常数项
-            theta_0 = stationCoord_0[3]
+            # 常数项            
             oriental = measureUtil.computeOriental(deltaY,deltaX)
             L0_angle = observation.obsValue + theta_0
             
@@ -119,19 +133,23 @@ class Adj_ts_3d():
         if observation.obsTag == "Sdist":
             b = np.zeros(self.countPara)
             # 测站点dx,dy,dh的系数
-            b[index_station * 4]     = - deltaX / distance
-            b[index_station * 4 + 1] = - deltaY / distance   
-            b[index_station * 4 + 2] = - deltaZ / distance         
+            b[index_station * 5]     = - deltaX / distance
+            b[index_station * 5 + 1] = - deltaY / distance   
+            b[index_station * 5 + 2] = - deltaZ / distance         
 
-            # 目标点dx,dy,dz的系数
-            b[index_target * 4]     =   deltaX / distance
-            b[index_target * 4 + 1] =   deltaY / distance   
-            b[index_target * 4 + 2] =   deltaZ / distance
+            # 站点折光改正系数           
+            b[index_station * 5 + 4] = deltaZ * distance_2D / (2 * R * distance)
             
-            # 常数项
+            # 目标点dx,dy,dz的系数
+            b[index_target * 5]     =   deltaX / distance
+            b[index_target * 5 + 1] =   deltaY / distance   
+            b[index_target * 5 + 2] =   deltaZ / distance            
+            
+            # 常数项  
             constantItem = observation.obsValue - \
                 math.pow(deltaX * deltaX + deltaY * deltaY + 
-                         (deltaZ + observation.refHt - observation.stationHt) * (deltaZ + observation.refHt - observation.stationHt) 
+                         (deltaZ + observation.refHt - observation.stationHt + deltaLight) * 
+                         (deltaZ + observation.refHt - observation.stationHt + deltaLight) 
                          ,0.5)
             print("test... sdist constant ....")
 
@@ -140,29 +158,32 @@ class Adj_ts_3d():
         if observation.obsTag == "Vertical":
             b = np.zeros(self.countPara)
             # 测站点dx,dy,dz的系数
-            b[index_station * 4]     = - rho * deltaZ * deltaX / (distance * distance * distance_2D)
-            b[index_station * 4 + 1] = - rho * deltaZ * deltaY / (distance * distance * distance_2D) 
-            b[index_station * 4 + 2] =   rho * distance_2D * deltaX / (distance * distance)            
+            b[index_station * 5]     = - rho * deltaZ * deltaX / (distance * distance * distance_2D)
+            b[index_station * 5 + 1] = - rho * deltaZ * deltaY / (distance * distance * distance_2D) 
+            b[index_station * 5 + 2] =   rho * distance_2D * deltaX / (distance * distance)            
 
+            # 平均地球曲率及折光改正
+            b[index_station * 5 + 4] = - rho * pow(distance_2D,3) / (2 * R * distance * distance)
+            
             # 目标点dx,dy,dz的系数
-            b[index_target * 4]     =   rho * deltaZ * deltaX / (distance * distance * distance_2D * distance_2D)
-            b[index_target * 4 + 1] =   rho * deltaZ * deltaY / (distance * distance * distance_2D * distance_2D) 
-            b[index_target * 4 + 2] = - rho * distance_2D / (distance * distance)
+            b[index_target * 5]     =   rho * deltaZ * deltaX / (distance * distance * distance_2D * distance_2D)
+            b[index_target * 5 + 1] =   rho * deltaZ * deltaY / (distance * distance * distance_2D * distance_2D) 
+            b[index_target * 5 + 2] = - rho * distance_2D / (distance * distance)
 
-            # 常数项
-            vertical_0 = math.acos((deltaZ + observation.refHt - observation.stationHt) / distance)
+            # 常数项            
+            vertical_0 = math.acos((deltaZ + observation.refHt - observation.stationHt + deltaLight) / distance)
             constantItem = rho * (observation.obsValue - vertical_0)
             print("test... vertical_0....")
         
-        if(constantItem >= 8 and observation.obsTag == "Hz"):
+        if(abs(constantItem) >= 16 and observation.obsTag == "Hz"):
             # Hz Vertical Sdist
             print(observation.obsTag)
         
-        if(constantItem >= 20 and observation.obsTag == "Vertical"):
+        if(abs(constantItem) >= 29 and observation.obsTag == "Vertical"):
             # Hz Vertical Sdist
             print(observation.obsTag)
             
-        if(constantItem >= 0.002 and observation.obsTag == "Sdist"):
+        if(abs(constantItem) >= 0.002 and observation.obsTag == "Sdist"):
             # Hz Vertical Sdist
             print(observation.obsTag)
             
@@ -373,12 +394,12 @@ clearedObsFile = "data\\sh20240418-1_03_clearedObs_2.txt"
 clearData = ClearedData()
 clearData.readObsForAdjFile(clearedObsFile)
 countObs = 1026
-countPara = (5 * 4)   # 5个站点 * （3个参数值（XYZ）+ 1个测站定向角） 
-X_0_intial = [(0,0,0,0),
-       (7.5328586172298335,42.71975085507182,-0.08396228993803155,3.141587459),
-       (-44.10333955843989,46.53699782891333,0.04998859829709336,1.470014085),
-       (-58.541570409993184,64.11429275705768,-0.14503027655293566,2.279357124),
-       (-59.8831692809281,22.290795727095485,-0.04903186626487553,6.140707647)]
+countPara = (5 * 5)   # 5个站点 * （3个参数值（XYZ）+ 1个测站定向角 + 1个大气折光改正） 
+X_0_intial = [(0,0,0,0,1.3),
+       (7.5328586172298335,42.71975085507182,-0.08396228993803155,3.141587459,1.3),
+       (-44.10333955843989,46.53699782891333,0.04998859829709336,1.470014085,1.3),
+       (-58.541570409993184,64.11429275705768,-0.14503027655293566,2.279357124,1.3),
+       (-59.8831692809281,22.290795727095485,-0.04903186626487553,6.140707647,1.3)]
 
 adj = Adj_ts_3d(countObs,countPara)
 adj.getX_0(X_0_intial )

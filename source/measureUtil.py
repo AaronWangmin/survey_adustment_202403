@@ -2,6 +2,7 @@ import math
 
 import util
 import round_measure as rm
+import ellipsoild as es
 
 # 根据方位角、竖直角、斜距计算另外一个点的 XYZ坐标
 # 
@@ -117,6 +118,13 @@ assert(abs(computeOriental(- math.pow(3, 0.5),   3) - 2 * math.pi / 3) <= 0.0000
 
 print("test.. oriental computer ok !")
 
+print(math.acos(-0.00168))
+
+
+        
+        
+    
+    
 
 #  test xa- data....
 # p1 = (0, 0, 0, 1.474)
