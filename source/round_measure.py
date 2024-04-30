@@ -88,8 +88,7 @@ class halfRoundObs:
             degrees_360.degrees2radians()
             vertical.value = degrees_360.value - self.Vz.value  
             self.vertical = vertical              
-            
-
+       
 # 一个测回类：仅是一个目标点的一个测回观测，但可以包含多次按键测量的数据。
 class RoundObs:
     def __init__(self,indexRound = "",halfRoundObsList = []) -> None:
@@ -146,7 +145,6 @@ class RoundObs:
         self.difMutiRoundVz = util.Angle()
         self.difMutiRoundSDist = 0.0
 
-
 # 一个观测点类（包括多个测回）
 class TargetObs:
     def __init__(self,indexTarget = "", roundObsList = []) -> None:
@@ -186,12 +184,12 @@ class StationObs:
         self.averageObsList = list()
         
         #  超限检查：角度单位 秒 ： 20
-        self.toleranceRound = [util.Angle(20,util.AngleType.seconds).seconds2radians().value,
-                               util.Angle(20,util.AngleType.seconds).seconds2radians().value,
-                               0.001]
+        self.toleranceRound = [util.Angle(2,util.AngleType.seconds).seconds2radians().value,
+                               util.Angle(5,util.AngleType.seconds).seconds2radians().value,
+                               0.0007]
         self.toleranceMutiRound = [util.Angle(20,util.AngleType.seconds).seconds2radians().value,
                                    util.Angle(20,util.AngleType.seconds).seconds2radians().value,
-                                   0.001]
+                                   0.00015]
 
     def stationCompute(self):
         for targetObs in self.targetObsList:
@@ -397,7 +395,7 @@ class StationObs:
                     info = "" 
         return allInfoOneStation    
     
-# 原始站点数据检查格式化输出：
+    # 原始站点数据检查格式化输出：
     #   1）以测回组织数据输出
     #   2）带外业限差计算输出
     def stringFormat_4(self):

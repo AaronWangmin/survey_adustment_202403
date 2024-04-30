@@ -198,3 +198,13 @@ class Angle():
 # assert float(angle_test.value[2]) - (- 30.123) <= 0.001
 
 # print("Angle tools is ok!" )
+
+
+a = Angle(1.5726078485,AngleType.radians)
+a.radians2dms()
+a.dms2degrees()
+print(a.value)
+# print(a.radians2dmsString())
+
+
+

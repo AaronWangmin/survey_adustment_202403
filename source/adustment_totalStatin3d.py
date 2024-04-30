@@ -233,10 +233,12 @@ class Adj_ts_3d():
         
         self.dX = Nm_inverse @ W
         
-        self.V = self.B @ self.dX - self.consL
-        
+        self.V = self.B @ self.dX - self.consL        
+
         self.L_computed = self.L + self.V
         
+        # TODO....
+        # 定向角需要将秒转换为弧度再加，
         self.X = self.X_0 + self.dX        
         
         self.Q_para = Nm_inverse @ Nm_inverse @ N
@@ -250,16 +252,36 @@ class Adj_ts_3d():
         test = np.diag(self.Q_para)
         
         print("test: adj compute...")
-       
+
+    def resultOutAdj(self,adjResultDir):
+        with open(adjResultDir, 'w', encoding='utf-8') as file:
+            stringCapital = ("点号,X,Y,Z,测站定向角,大气折光改正, \n") 
+            file.write(stringCapital)
+
+            for i in range(int(self.countPara / 5)):
+                coord_adj = ("," + str(adj.X[5 * i]) + "," + 
+                            str(adj.X[5 * i + 1]) + "," + 
+                            str(adj.X[5 * i + 2]) + "," +
+                            str(adj.X[5 * i + 3]) + "," +
+                            str(adj.X[5 * i + 4]) + "," + 
+                            str(adj.sigama_para[5 * i]) + "," +
+                            str(adj.sigama_para[5 * i + 1]) + "," +
+                            str(adj.sigama_para[5 * i + 2]) + "," +
+                            str(adj.sigama_para[5 * i + 3]) + "," +
+                            str(adj.sigama_para[5 * i + 4]) + "," + "\n")
+                
+                file.write(coord_adj)
+
 class ClearedData():
     def __init__(self) -> None:
         self.clearedDataItemList = list()
     
     # 直接读取平差所需要的观测值数据
     def readObsForAdjFile(self,fileDir):
+        
         with open(fileDir, 'r', encoding='utf-8') as fo:
             line = fo.readline()
-            line = fo.readline()
+            line = fo.readline()            
             while line:
                 infoList = line.split(",")
                 obs = Observation()
@@ -289,11 +311,11 @@ class ClearedData():
                 line = fo.readline()
     
     # 设站站与目标点统一编号,为参数位置计算做准备
-    def reOrderParaForAdj(self):
-        targetOrderList = list()
-        for obs in self.clearedDataItemList:
-            targetOrderList.append(obs.indexStation)
-        targetOrderList = util.removeDuplicatesList(targetOrderList)
+    def reOrderParaForAdj(self,targetOrderList):
+        # targetOrderList = list()
+        # for obs in self.clearedDataItemList:
+        #     targetOrderList.append(obs.indexStation)
+        # targetOrderList = util.removeDuplicatesList(targetOrderList)       
 
         for obs in self.clearedDataItemList:
             for targetOrderIdex,targetOrder in enumerate(targetOrderList):
@@ -376,30 +398,53 @@ class Observation():
 
 ##### test clearData.............
 # clearedDataFileDir = "data\\02_clearedData_1.txt"
-clearedDataFileDir = "data\\sh20240418-1_02_clearedData.txt"
+# clearedDataFileDir = "data\\SH20240420-2-03_cleardData_2.txt"
+clearedDataFileDir = "data\\sh20240429_01_02_clearedData.txt"
+# clearedDataFileDir = "data\\sh20240429_02_02_clearedData.txt"
+# clearedDataFileDir = "data\\SH20240429-average.txt"
+
+targetOrderList = ["P1","P2","P3","P4","P5","L1","L2","L3","L4"]
+# targetOrderList = ["P1","P2","P3","P4","P5"]
 
 outPutPrefix = clearedDataFileDir.split("_")[0]
 
 clearData = ClearedData()
 clearData.readClearedDataFile(clearedDataFileDir)
-clearData.reOrderParaForAdj()
+clearData.reOrderParaForAdj(targetOrderList)
+# clearData.reOrderParaForAdj()
 
 clearedObsFileDir = str(outPutPrefix + "_03_clearedObs.txt")
 clearData.out2File(clearedObsFileDir)
 
-
-
 ##### test Adj_ts_3d...............
-clearedObsFile = "data\\sh20240418-1_03_clearedObs_2.txt"
+# clearedObsFile = "data\\SH20240420-2-03_03_clearedObs.txt"
+# clearedObsFile = "data\\sh20240429_03_clearedObs.txt"
+# clearedObsFile = "data\\sh20240429_03_clearedObs.txt"
+
+
 clearData = ClearedData()
-clearData.readObsForAdjFile(clearedObsFile)
-countObs = 1026
-countPara = (5 * 5)   # 5个站点 * （3个参数值（XYZ）+ 1个测站定向角 + 1个大气折光改正） 
-X_0_intial = [(0,0,0,0,1.3),
-       (7.5328586172298335,42.71975085507182,-0.08396228993803155,3.141587459,1.3),
-       (-44.10333955843989,46.53699782891333,0.04998859829709336,1.470014085,1.3),
-       (-58.541570409993184,64.11429275705768,-0.14503027655293566,2.279357124,1.3),
-       (-59.8831692809281,22.290795727095485,-0.04903186626487553,6.140707647,1.3)]
+clearData.readObsForAdjFile(clearedObsFileDir)
+countObs = len(clearData.clearedDataItemList)
+countPara = (9 * 5)   # 5个站点 * （3个参数值（XYZ）+ 1个测站定向角 + 1个大气折光改正） 
+# X_0_intial = [(970.798, 943.163, 10.049, 3.141592653590, 1.3),
+#        (936.437, 969.635, 9.965, 3.141592653590, 1.3),
+#        (972.003, 1007.268, 10.099, 3.141592653590, 1.3),
+#        (970.817, 1029.983, 9.904, 3.141592653590, 1.3),
+#        (1000,1000, 10, 3.141592653590, 1.3),
+#        (1071.188, 962.28, 9.708, 3.141592653590, 1.3),
+#        (1063.859, 867.168, 9.892, 3.141592653590, 1.3),       
+#        (1011.422, 955.836, 15.155, 3.141592653590, 1.3),
+#        (1004.952, 954.592, 15.15, 3.141592653590, 1.3)]
+
+X_0_intial = [(156.837,129.202,10.049, 0.0, 1.3),
+       (130.365,163.563,9.965, 0.0, 1.3),
+       (92.732,127.997,10.099, 0.0, 1.3),
+       (70.017,129.183,9.904, 0.0, 1.3),
+       (100,100,10, 0.0, 1.3),
+       (137.7260,28.8126,9.6569, 0.0, 1.3),
+       (232.8369,36.1423,9.8390, 0.0, 1.3),       
+       (144.1701,88.5778,15.1036, 0.0, 1.3),
+       (145.4146,95.0473,15.1445, 0.0, 1.3)]
 
 adj = Adj_ts_3d(countObs,countPara)
 adj.getX_0(X_0_intial )
@@ -428,10 +473,16 @@ adj.adjCompute()
 print("test: adj")
 
 # test.... adj.V
-# max_row_index = np.argmax(adj.V)
-# k = 10
-# ind = np.argpartition(adj.V, -k)[-k:]
-# sorted_indices_1d = adj.V.argsort()[::-1]
-# sorted_array_1d = adj.V[sorted_indices_1d]
+max_row_index = np.argmax(adj.V)
+value_maxV = adj.V[max_row_index]
+k = 10
+ind = np.argpartition(adj.V, -k)[-k:]
+sorted_indices_1d = adj.V.argsort()[::-1]
+sorted_array_1d = adj.V[sorted_indices_1d]
 print("test...v")
+
+resultAdj = str(outPutPrefix + "_04_resultAdj.txt")
+adj.resultOutAdj(resultAdj)
+print("test...resultAdj...")
+
 

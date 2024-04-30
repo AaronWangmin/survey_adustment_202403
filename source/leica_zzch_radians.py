@@ -119,8 +119,9 @@ class ZzchRadinas:
             return "R"                
                    
 # test........
-# 
-zzcch_radians_dir = "data\\sh20240418-1.txt"
+#
+zzcch_radians_dir = "data\\sh20240429_01.txt" 
+# zzcch_radians_dir = "data\\sh20240429_02.txt"
 
 zzchRadinas = ZzchRadinas()
 zzchRadinas.extractAllRawStationBlock(zzcch_radians_dir)
